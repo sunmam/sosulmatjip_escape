@@ -896,7 +896,7 @@ function sLogin(){
   if(ST.lockClass&&S.classes[ST.lockClass])ST.classId=ST.lockClass;
   if(ST.classId&&!cls.some(c=>c.id===ST.classId))ST.classId=null;
   if(!ST.classId&&cls.length===1)ST.classId=cls[0].id;
-  const c=sCls();const saved=LS.get('als-me',{});
+  const c=sCls();const saved=LS.get('alsE-me',{});
   if(c&&ST.group&&!(c.groups||[]).some(g=>g.id===ST.group))ST.group=null;
   const keep=id=>{const el=$('#'+id);return el?el.value:null};
   const num=keep('s-num')??(saved.classId===ST.classId?saved.num||'':'');const name=keep('s-name')??(saved.classId===ST.classId?saved.name||'':'');
@@ -931,7 +931,7 @@ async function sJoin(){
     ST.me={classId:c.id,novelId:c.novelId,group:ST.group,num,name,character:ST.char,answers:{},table:[],done:false,createdAt:Date.now()};
   }
   ST.me.novelId=c.novelId;
-  ST.key=key;LS.set('als-me',{classId:c.id,num,name,group:ST.group,char:ST.char});
+  ST.key=key;LS.set('alsE-me',{classId:c.id,num,name,group:ST.group,char:ST.char});
   saveMe();
   ST.view=sCur()?(Object.keys(ST.me.answers).length?'play':'intro'):'end';
   sRender();
@@ -1153,7 +1153,7 @@ function onStoreChange(){
 }
 async function startStudent(lock){
   ST.lockClass=lock||null;
-  const saved=LS.get('als-me',{});if(saved.classId){ST.classId=saved.classId;ST.group=saved.group||null;ST.char=saved.char||0}
+  const saved=LS.get('alsE-me',{});if(saved.classId){ST.classId=saved.classId;ST.group=saved.group||null;ST.char=saved.char||0}
   if(lock&&saved.classId!==lock){ST.classId=lock;ST.group=null}
   app.innerHTML=`<div class="home"><div class="home-in"><div class="spool">${UI.emo}</div><div class="logo">${UI.logo}</div><p class="muted" style="font-family:var(--ui)">불러오는 중…</p></div></div>`;
   await Store.init({poll:3000});

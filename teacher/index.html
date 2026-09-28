@@ -745,7 +745,7 @@ const SAMPLE_NOVEL={
  ]
 };
 
-const T={openCls:{},tab:LS.get('als-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('als-t-class',null),pending:false,saving:0,
+const T={openCls:{},tab:LS.get('alsE-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('alsE-t-class',null),pending:false,saving:0,
   nf:{n:'',d:'',tier:0,qty:1,cands:[],ci:0,up:'',searching:false,q:''}};
 const TABS=[['novels','📚 소설'],['classes','🏫 반·모둠'],['menu','🍱 메뉴판'],['questions','✏️ 문제'],['board','📊 활동 보드']];
 /* 학생용 주소: 교사가 저장한 주소 → 설정값 → 같은 사이트의 …/student/ 자동 */
@@ -759,7 +759,7 @@ function studentBase(){return (S.app.studentUrl||STUDENT_URL||autoStudentUrl()).
 function tRender(){
   if(!$('#tmain')){
     app.innerHTML=`<header class="tbar"><span class="logo sm">소설 맛집</span><span class="tag" style="background:var(--sky);color:#fff">교사용</span><span class="tag" style="background:var(--grape);color:#fff">🗝️ 방탈출형</span>
-      <nav class="tabs" id="ttabs"></nav><span class="save-dot" id="savedot">${LOCAL?'체험 모드 · 이 브라우저에만 저장':'자동 저장 · 실시간 연결'}</span><span id="netdot" class="tag" style="background:var(--pink);color:#fff" hidden>연결 끊김</span></header>
+      <nav class="tabs" id="ttabs"></nav><span class="save-dot" id="savedot">${LOCAL?'체험 모드 · 이 브라우저에만 저장':'자동 저장 · 실시간 연결'}</span><span id="netdot" class="tag" style="background:var(--pink);color:#fff" hidden>연결 끊김</span>${LOCAL?'':'<button class="btn sm" data-act="lock" title="이 컴퓨터에 기억된 비밀번호를 지우고 잠가요">🔒 잠그기</button>'}</header>
       <main class="wrap" id="tmain"></main>`;
   }
   $('#ttabs').innerHTML=TABS.map(([k,l])=>`<button class="${T.tab===k?'on':''}" data-act="tab" data-k="${k}">${l}</button>`).join('');
@@ -1131,7 +1131,9 @@ function downloadFolder(fid){
 
 /* --- 교사 이벤트 --- */
 const TA={
-  tab(b){T.tab=b.dataset.k;LS.set('als-t-tab',T.tab);T.pending=false;tRender()},
+  tab(b){T.tab=b.dataset.k;LS.set('alsE-t-tab',T.tab);T.pending=false;tRender()},
+  /* 잠그기: 이 컴퓨터에 기억된 교사 비밀번호를 지우고 비밀번호 화면으로 */
+  lock(){confirmBox('이 컴퓨터에 기억된 교사 비밀번호를 지우고 잠글까요?<br>다음에 열 때 비밀번호를 다시 물어봐요.','잠그기',()=>{LS.set('alsE-t-key','');location.reload()})},
   async 'add-novel'(){const title=$('#nv-title').value.trim(),author=$('#nv-author').value.trim(),text=$('#nv-text').value;
     if(!title){toast('소설 제목을 입력하세요.');return}
     const id=uid('n');$('#nv-title').value='';$('#nv-author').value='';$('#nv-text').value='';document.activeElement.blur&&document.activeElement.blur();
@@ -1144,7 +1146,7 @@ const TA={
     const data={title,author:$('#nv-author').value.trim(),text:$('#nv-text').value};T.editNovel=null;document.activeElement.blur&&document.activeElement.blur();
     await tWrite(()=>Store.update('novels/'+id,data));tRender();toast('저장했어요.')},
   'del-novel'(b){const n=S.novels[b.dataset.id];confirmBox(`「${esc(n.title)}」과 문제 ${(n.questions||[]).length}개를 삭제할까요?`,'삭제',()=>tWrite(()=>Store.del('novels/'+b.dataset.id)))},
-  'go-q'(b){T.novelId=b.dataset.id;T.tab='questions';LS.set('als-t-tab',T.tab);tRender()},
+  'go-q'(b){T.novelId=b.dataset.id;T.tab='questions';LS.set('alsE-t-tab',T.tab);tRender()},
   'save-url'(){let u=$('#stu-url').value.trim();if(u&&!/^https?:\/\//.test(u))u='https://'+u;document.activeElement.blur&&document.activeElement.blur();
     tWrite(()=>Store.update('settings/app',{studentUrl:u}));toast('학생용 주소를 저장했어요.')},
   qr(b){showQR(b.dataset.u,b.dataset.t)},
@@ -1219,7 +1221,7 @@ const TA={
   'q-move'(b){const i=+b.dataset.i,j=+b.dataset.j;qMutate(a=>{if(j<0||j>=a.length||!a[i])return;[a[i],a[j]]=[a[j],a[i]]})},
   'q-del'(b){const i=+b.dataset.i;confirmBox(`Q${b.dataset.n||i+1} 문제를 삭제할까요?`,'삭제',()=>qMutate(a=>a.splice(i,1)))},
   /* 보드 */
-  'board-class'(b){T.classId=b.dataset.id;LS.set('als-t-class',T.classId);tRender()},
+  'board-class'(b){T.classId=b.dataset.id;LS.set('alsE-t-class',T.classId);tRender()},
   'open-group'(b){openGroup(b.dataset.g)},
   'rank-search'(){const r=+$('#rank-q').value;const out=$('#rank-out');const list=ranked(classStudents(T.classId));const hit=list.filter(s=>s.rank===r);const c=S.classes[T.classId];
     out.innerHTML=hit.length?hit.map(s=>`<div class="srow">${avatar(s.character,'xs')}<span><b style="font-family:var(--ui)">${r}위 ${esc(s.name)}</b> <span class="muted">${esc(s.num)}번 · ${esc(groupName(c,s.group))}</span></span><b>${s.score}점</b></div>`).join(''):`${r||'?'}위 학생이 없어요. (참여 ${list.length}명)`},
@@ -1288,7 +1290,7 @@ function keyGate(msg=''){
   $('#kform').onsubmit=async e=>{e.preventDefault();const k=$('#tkey').value;const ok=await checkTeacherKey(k);
     if(ok===null)return keyGate('서버에 연결하지 못했어요. API_URL과 인터넷을 확인해 주세요.');
     if(!ok)return keyGate('비밀번호가 맞지 않아요.');
-    LS.set('als-t-key',k);startTeacher(k)};
+    LS.set('alsE-t-key',k);startTeacher(k)};
 }
 let tStarted=false;
 async function startTeacher(key){
@@ -1310,7 +1312,7 @@ async function startTeacher(key){
 }
 (async function boot(){
   if(LOCAL)return startTeacher('');
-  const k=LS.get('als-t-key','');
+  const k=LS.get('alsE-t-key','');
   if(k){const ok=await checkTeacherKey(k);if(ok!==false)return startTeacher(k)}
   keyGate();
 })();
