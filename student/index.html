@@ -499,15 +499,19 @@ body{background-color:#F3EEFF}
 .er-door.open .er-glow::after{opacity:1}
 @keyframes doorWiggle{50%{transform:rotateY(-8deg)}}
 
-/* 주인공 */
-.er-hero{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);display:grid;justify-items:center;transition:bottom 1s ease-in,transform 1s ease-in,opacity .9s ease-in;z-index:2}
+/* 주인공 (손으로 움직이는 캐릭터) */
+.er-hero{position:absolute;left:0;top:0;display:grid;justify-items:center;will-change:transform;pointer-events:none;transition:opacity .7s ease-in}
+.er-sprite{display:block;transform:scaleX(var(--face,1))}
 .er-hero .av{animation:bob 2.2s ease-in-out infinite}
-.er-shadow{width:48px;height:10px;border-radius:50%;background:rgba(28,26,59,.25);margin-top:-4px}
+.er-hero.walking .av{animation:waddle .36s ease-in-out infinite}
+.er-shadow{width:48px;height:10px;border-radius:50%;background:rgba(28,26,59,.28);margin-top:-6px}
 .er-hero.hop .av{animation:hop .45s ease}
-.er-hero.cheer .av{animation:cheer .8s ease 2}
-.er-hero.walk{bottom:30%;transform:translateX(-50%) scale(.45);opacity:0}
+.er-hero.enter{opacity:0}
+@keyframes waddle{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-7px) rotate(6deg)}}
 @keyframes hop{40%{transform:translateY(-22px) scale(1.05)}}
-@keyframes cheer{25%{transform:translateY(-18px) rotate(-12deg)}50%{transform:translateY(0)}75%{transform:translateY(-12px) rotate(12deg)}}
+.er-say{position:absolute;bottom:100%;left:50%;transform:translateX(-50%) scale(.6);margin-bottom:6px;white-space:nowrap;font-family:var(--ui);font-size:14px;background:#fff;border:2.5px solid var(--ink);border-radius:14px;padding:4px 10px;box-shadow:2px 3px 0 var(--ink);opacity:0;transition:.2s}
+.er-say.on{opacity:1;transform:translateX(-50%) scale(1)}
+.er-say::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:7px solid transparent;border-top-color:var(--ink)}
 
 /* 열쇠구멍 판 */
 .kh-board{background:#fff;border:3px solid var(--ink);border-radius:22px;box-shadow:4px 5px 0 var(--ink);padding:12px}
@@ -561,6 +565,52 @@ body{background-color:#F3EEFF}
 
 @media (min-width:920px){.er-box{height:340px}}
 @media (max-width:380px){.kh-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.kh-plate{width:56px;height:64px}.dm{width:38px}.dm i{width:30px;height:36px}}
+
+/* ===== 한 화면 방 (캐릭터 이동형) ===== */
+.er-app .play-grid>div:first-child{display:grid;gap:0}
+.er-app .er{gap:0}
+.er-box{height:clamp(340px,calc(100dvh - 230px),720px);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;outline:none}
+.er-box:focus-visible{box-shadow:5px 6px 0 var(--ink),0 0 0 4px var(--sky)}
+@media (min-width:920px){.er-box{height:clamp(420px,calc(100vh - 190px),640px)}}
+/* 방의 벽·바닥 비율 (바닥을 넓게) */
+.er-ceil{height:9%}
+.er-lw{clip-path:polygon(0 0,100% 9%,100% 44%,0 100%)}
+.er-rw{clip-path:polygon(0 9%,100% 0,100% 100%,0 44%)}
+.er-back{top:9%;height:35%}
+.er-floor{height:56%;clip-path:polygon(16% 0,84% 0,100% 100%,0 100%);background:conic-gradient(var(--fl) 25%,var(--fl2) 0 50%,var(--fl) 0 75%,var(--fl2) 0) 0 0/34px 34px}
+.er-door{bottom:0;width:30%;height:86%}
+.er-lw span,.er-rw span{top:20%}
+.er-deco{top:30%}
+/* 방 이름 (방 안 위쪽) */
+.er-top{position:absolute;left:8px;right:8px;top:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;z-index:120;pointer-events:none}
+.er-top b{font-family:var(--display);font-weight:400;font-size:17px;background:rgba(255,255,255,.85);border:2px solid var(--ink);border-radius:10px;padding:0 8px}
+.er-top .er-keys{margin-left:auto;font-size:15px;padding:0 10px}
+.er-top .er-no{font-size:12px}
+/* 문 열림 안내 */
+.er-go{position:absolute;left:50%;top:-30px;transform:translateX(-50%);white-space:nowrap;font-family:var(--display);font-size:15px;background:var(--sun);border:2.5px solid var(--ink);border-radius:10px;padding:1px 8px;box-shadow:2px 3px 0 var(--ink);animation:goBob .8s ease-in-out infinite;z-index:3}
+@keyframes goBob{50%{transform:translateX(-50%) translateY(-6px)}}
+/* 바닥의 열쇠구멍 상자 */
+.kb{position:absolute;transform:translate(-50%,-88%) scale(var(--sc,1));transform-origin:50% 100%;display:grid;justify-items:center;pointer-events:none}
+.kb-box{position:relative;width:58px;height:54px;border:3px solid var(--ink);border-radius:14px 14px 10px 10px;display:grid;place-items:center;
+  background:radial-gradient(circle at 28% 22%,rgba(255,255,255,.85) 0 6px,transparent 7px),linear-gradient(160deg,var(--w1),var(--dr));box-shadow:0 6px 0 var(--ink),0 12px 10px -4px rgba(28,26,59,.35)}
+.kb-box::before{content:"";position:absolute;left:-3px;right:-3px;top:34%;height:6px;background:rgba(28,26,59,.22);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+.kb .kh-hole{transform:scale(.8)}
+.kb-key{position:absolute;font-size:26px;filter:drop-shadow(1px 2px 0 rgba(28,26,59,.35))}
+.kb-no{position:absolute;top:-10px;left:-8px;min-width:22px;height:22px;border-radius:11px;background:#fff;border:2px solid var(--ink);font-family:var(--display);font-size:12px;display:grid;place-items:center;padding:0 4px}
+.kb-badge{position:absolute;top:-10px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--mint);color:#fff;border:2px solid var(--ink);font-size:12px;display:grid;place-items:center}
+.kb.st-next .kb-box{animation:kbglow 1.1s ease-in-out infinite}
+.kb.st-ok .kb-box{background:linear-gradient(160deg,#C9F3E6,#23C4A2)}
+.kb.st-pass .kb-box{background:linear-gradient(160deg,#EDEAF7,#B9B4D6)}
+.kb.st-ok .kh-hole,.kb.st-pass .kh-hole{opacity:.2}
+.kb.pop .kb-box{animation:khpop .7s cubic-bezier(.3,1.6,.5,1)}
+.kb.entering .kb-box{animation:kbIn .3s ease-in forwards}
+@keyframes kbglow{50%{transform:translateY(-5px);box-shadow:0 11px 0 var(--ink),0 0 0 6px rgba(255,210,63,.7),0 0 22px 8px rgba(255,210,63,.65)}}
+@keyframes kbIn{to{transform:scale(1.25)}}
+/* 처음 안내 */
+.er-hint{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);z-index:130;pointer-events:none;text-align:center;font-family:var(--ui);font-size:15px;line-height:1.35;background:rgba(28,26,59,.82);color:#fff;border-radius:14px;padding:8px 14px;white-space:nowrap;animation:pulse 1.6s infinite}
+.er-hint small{font-size:12px;opacity:.85}
+@media (max-width:380px){.kb-box{width:50px;height:48px}.er-hint{font-size:13px}}
+.sapp.er-app{padding-bottom:92px}
 
 </style>
 </head>
@@ -1169,7 +1219,8 @@ async function startStudent(lock){
    - 기본 학생용(student.js)의 입장·정답 확인·음식 고르기·식탁·제출을 그대로 쓰고
      문제 푸는 화면만 "5개의 방 탈출"로 바꿈
    - 방 = 음식 레벨(Lv.1~5). 문제는 하→중→상 (교사가 "모든 문제 무작위"로 해도 방탈출은 하→중→상 유지)
-   - 방의 열쇠구멍을 모두 풀면 문이 열리고 다음 방으로
+   - 한 화면: 캐릭터를 손(탭·끌기)이나 방향키로 움직여 방 바닥의 열쇠구멍 상자에 닿으면 문제,
+     방의 열쇠구멍을 모두 열면 문이 열리고, 문까지 걸어가면 다음 방으로
    ========================================================= */
 Object.assign(UI,{logo:'소설 방탈출',emo:'🗝️',sub:'소설 속 5개의 방에 갇혔다!<br>문제를 풀어 열쇠를 모으고 탈출하자!',next:'방으로 돌아가기 ▶',endTitle:'🏆 대탈출 성공!'});
 
@@ -1180,12 +1231,17 @@ const ROOMS=[
   {w1:'#A9EEDB',w2:'#6ED9BC',fl:'#E1F8F1',fl2:'#C3F0E3',door:'#1FA586',deco:['🕯️','🎩','🍷','🕯️']},
   {w1:'#D6C8FF',w2:'#B39CFF',fl:'#F0EBFF',fl2:'#DDD2FF',door:'#7B5CF0',deco:['👑','✨','💎','✨']}
 ];
+Object.assign(ST,{room:null,pos:{x:.5,y:.93},target:null,keys:{},face:1,moving:false,loopOn:false,lt:0,drag:false,curQ:null,qOpen:false,sayT:null,hitCool:0,moved:false});
 
 /* 방탈출은 늘 하→중→상 (무작위 설정이면 같은 수준 안에서만 섞음) */
 function sQs(){const n=sNovel();if(!n)return[];return orderedQs(n.order==='all'?{...n,order:'levelMix'}:n,ST.key)}
+function firstOpen(){const a=ST.me.answers||{};return sQs().find(q=>!a[q.id])}
+/* 지금 푸는 문제: 학생이 들어간 열쇠구멍, 없으면 아직 안 푼 첫 문제 */
+function sCur(){const a=ST.me.answers||{};if(ST.curQ){const q=sQs().find(x=>x.id===ST.curQ);if(q&&!a[q.id])return q}return firstOpen()}
 function roomQs(r){return sQs().filter(q=>tierFor(q)===r)}
 function qDone(q){return !!(ST.me.answers||{})[q.id]}
-function roomState(r){const l=roomQs(r);if(!l.length)return 'skip';if(l.every(qDone))return 'done';const c=sCur();return c&&tierFor(c)===r?'cur':'lock'}
+function roomDone(r){return roomQs(r).every(qDone)}
+function roomState(r){const l=roomQs(r);if(!l.length)return 'skip';if(l.every(qDone))return 'done';if(r===ST.room)return 'cur';const c=firstOpen();return c&&tierFor(c)===r&&ST.room==null?'cur':'lock'}
 
 /* 위쪽: 점수 + 5개 방 지도 */
 function hud(){
@@ -1194,35 +1250,115 @@ function hud(){
    <div class="er-map" aria-label="탈출 지도">${ROOMS.map((R,r)=>{const s=roomState(r);return `<span class="dm ${s}" style="--dc:${R.door}" title="${r+1}번 방 · ${TIERS[r].name}"><i>${s==='done'?'✓':s==='lock'?'🔒':s==='skip'?'·':r+1}</i><em>${TIERS[r].name}</em></span>`}).join('<b class="dm-path"></b>')}</div>`;
 }
 
-/* 방 그리기 (벽·바닥·문·주인공) + 열쇠구멍 판 */
-function roomHTML(r,{opening=false}={}){
-  const R=ROOMS[r];const list=roomQs(r);const all=sQs();const cur=sCur();
-  const doneN=list.filter(qDone).length;const open=opening||doneN===list.length;
+/* ---------- 방 좌표 (바닥: x 0~1 왼→오, y 0~1 안쪽→앞쪽) ---------- */
+const FLOOR_TOP=.44,SIDE=.16;
+function geo(){const st=$('#stage');if(!st)return null;const W=st.clientWidth,H=st.clientHeight;return{st,W,H,ft:H*FLOOR_TOP,fh:H*(1-FLOOR_TOP)}}
+function toScreen(g,x,y){const L=g.W*SIDE*(1-y),Wd=g.W*(1-2*SIDE*(1-y));return{sx:L+x*Wd,sy:g.ft+y*g.fh,sc:.58+.42*y}}
+function toFloor(g,sx,sy){const y=Math.max(.02,Math.min(.97,(sy-g.ft)/g.fh));const L=g.W*SIDE*(1-y),Wd=g.W*(1-2*SIDE*(1-y));return{x:Math.max(.05,Math.min(.95,(sx-L)/Wd)),y}}
+/* 열쇠구멍 상자 자리: 방마다 고정 (줄 맞춰 흩어 놓기) */
+function khSpots(n,r){
+  const rnd=seededRand('room'+r+'-'+n);const rows=n<=3?1:n<=6?2:3;const per=Math.ceil(n/rows);
+  const ys=rows===1?[.46]:rows===2?[.3,.66]:[.2,.47,.74];const out=[];
+  for(let i=0;i<n;i++){const row=Math.floor(i/per),col=i%per;const cnt=Math.min(per,n-row*per);
+    out.push({x:Math.max(.08,Math.min(.92,(col+.5)/cnt+(rnd()-.5)*.1)),y:ys[row]+(rnd()-.5)*.08})}
+  return out;
+}
+
+/* 방 그리기 */
+function roomHTML(r){
+  const R=ROOMS[r];const list=roomQs(r);const all=sQs();const spots=khSpots(list.length,r);
+  const doneN=list.filter(qDone).length;const open=doneN===list.length;
   const locks=list.slice(0,10).map(q=>`<span class="dl${qDone(q)?' off':''}">${qDone(q)?'🔓':'🔒'}</span>`).join('')+(list.length>10?`<span class="dl more">+${list.length-10}</span>`:'');
-  const kh=list.map(q=>{const a=(ST.me.answers||{})[q.id];const no=all.findIndex(x=>x.id===q.id)+1;
-    const st=a?(a.ok?'ok':'pass'):(cur&&cur.id===q.id?'next':'later');
-    return `<button class="kh st-${st}${ST.justOpened===q.id?' pop':''}" data-sact="kh" data-q="${esc(q.id)}" aria-label="${no}번 열쇠구멍 ${st==='ok'?'열림':st==='pass'?'정답 확인함':st==='next'?'지금 풀기':'잠김'}">
-      <span class="kh-plate"><span class="kh-hole"></span>${st==='ok'?'<span class="kh-key">🗝️</span>':''}${st==='pass'?'<span class="kh-key">👀</span>':''}</span>
-      <span class="kh-no">${no}</span><span class="kh-lab">${q.level} · ${TYPE[q.type]}</span>
-      ${st==='next'?'<span class="kh-tap">TAP!</span>':''}${st==='ok'?'<span class="kh-badge">✓</span>':''}</button>`}).join('');
+  const boxes=list.map((q,i)=>{const a=(ST.me.answers||{})[q.id];const no=all.findIndex(x=>x.id===q.id)+1;const st=a?(a.ok?'ok':'pass'):'next';
+    return `<div class="kb st-${st}${ST.justOpened===q.id?' pop':''}" data-q="${esc(q.id)}" data-x="${spots[i].x}" data-y="${spots[i].y}" title="${no}번 열쇠구멍">
+      <span class="kb-box"><span class="kh-hole"></span>${st==='ok'?'<span class="kb-key">🗝️</span>':st==='pass'?'<span class="kb-key">👀</span>':''}</span>
+      <span class="kb-no">${no}</span>${st==='ok'?'<span class="kb-badge">✓</span>':''}</div>`}).join('');
   return `<section class="er" style="--w1:${R.w1};--w2:${R.w2};--fl:${R.fl};--fl2:${R.fl2};--dr:${R.door}">
-    <div class="er-title"><span class="er-no">ROOM ${r+1}</span><b>${TIERS[r].name}의 방</b><span class="er-keys">🔑 ${doneN}/${list.length}</span></div>
-    <div class="er-box${opening?' opening':''}">
+    <div class="er-box" id="stage" tabindex="0" aria-label="방 화면. 바닥을 누르거나 끌어서, 또는 방향키로 캐릭터를 움직여요">
       <div class="er-ceil"></div><div class="er-lw"><span>${R.deco[0]}</span></div><div class="er-rw"><span>${R.deco[3]}</span></div>
       <div class="er-back">
         <span class="er-deco a">${R.deco[1]}</span><span class="er-deco b">${R.deco[2]}</span>
         <div class="er-lights">${'<i></i>'.repeat(9)}</div>
-        <div class="er-door${open?' unlocked':''}">
+        <div class="er-door${open?' unlocked':''}" id="door">
           <div class="er-glow"></div>
           <div class="er-panel"><span class="er-sign">EXIT</span><span class="er-knob"></span><span class="er-locks">${locks}</span></div>
+          ${open?'<span class="er-go">⬆ 문으로!</span>':''}
         </div>
       </div>
       <div class="er-floor"></div>
-      <div class="er-hero${ST.justOpened?' cheer':''}">${avatar(ST.me.character,'lg')}<span class="er-shadow"></span></div>
+      <div class="er-top"><span class="er-no">ROOM ${r+1}</span><b>${TIERS[r].name}의 방</b><span class="er-keys">🔑 ${doneN}/${list.length}</span></div>
+      ${boxes}
+      <div class="er-hero" id="hero"><span class="er-say" id="say"></span><span class="er-sprite">${avatar(ST.me.character,'lg')}</span><span class="er-shadow"></span></div>
+      ${ST.moved?'':'<div class="er-hint" id="hint">👆 바닥을 누르거나 끌어서 캐릭터를 움직여요<br><small>PC는 방향키도 돼요</small></div>'}
     </div>
-    <div class="kh-board"><div class="kh-hd">${open?'🎉 모든 열쇠구멍이 열렸어요!':'✨ 반짝이는 열쇠구멍을 눌러 문제를 풀어요'}</div><div class="kh-grid">${kh}</div></div>
   </section>`;
 }
+function layoutRoom(){
+  const g=geo();if(!g)return;
+  $$('.kb',g.st).forEach(el=>{const p=toScreen(g,+el.dataset.x,+el.dataset.y);el.style.left=p.sx+'px';el.style.top=p.sy+'px';el.style.setProperty('--sc',p.sc);el.style.zIndex=Math.round(+el.dataset.y*100)});
+  drawHero(g);
+}
+function drawHero(g){
+  const h=$('#hero');if(!h)return;const p=toScreen(g,ST.pos.x,ST.pos.y);
+  h.style.transform=`translate(${p.sx}px,${p.sy}px) translate(-50%,-92%) scale(${p.sc})`;h.style.zIndex=Math.round(ST.pos.y*100)+1;
+  h.classList.toggle('walking',ST.moving);h.style.setProperty('--face',ST.face);
+}
+function say(t,ms=1700){const s=$('#say');if(!s)return;s.textContent=t;s.classList.add('on');clearTimeout(ST.sayT);ST.sayT=setTimeout(()=>{const x=$('#say');x&&x.classList.remove('on')},ms)}
+
+/* ---------- 움직이기 ---------- */
+const SPEED=.62;
+function startLoop(){if(ST.loopOn)return;ST.loopOn=true;ST.lt=0;requestAnimationFrame(loop)}
+function loop(ts){
+  const g=geo();
+  if(!g||ST.view!=='play'){ST.loopOn=false;return}
+  const dt=ST.lt?Math.min(.05,(ts-ST.lt)/1000):0;ST.lt=ts;
+  const blocked=ST.busy||!!$('.ov')||ST.qOpen;
+  let vx=0,vy=0;
+  if(!blocked){
+    const k=ST.keys;const kx=(k.right?1:0)-(k.left?1:0),ky=(k.down?1:0)-(k.up?1:0);
+    if(kx||ky){ST.target=null;const d=Math.hypot(kx,ky);vx=kx/d;vy=ky/d}
+    else if(ST.target){const dx=ST.target.x-ST.pos.x,dy=ST.target.y-ST.pos.y,d=Math.hypot(dx,dy);if(d<.012)ST.target=null;else{vx=dx/d;vy=dy/d}}
+  }else ST.target=null;
+  ST.moving=!!(vx||vy);
+  if(ST.moving){
+    ST.pos.x=Math.max(.05,Math.min(.95,ST.pos.x+vx*SPEED*dt*.8));ST.pos.y=Math.max(.02,Math.min(.97,ST.pos.y+vy*SPEED*dt));
+    if(Math.abs(vx)>.15)ST.face=vx>0?1:-1;
+    if(!ST.moved){ST.moved=true;const h=$('#hint');h&&h.remove()}
+  }
+  drawHero(g);
+  if(!blocked&&ts>ST.hitCool)checkHits(g);
+  requestAnimationFrame(loop);
+}
+function checkHits(g){
+  const hp=toScreen(g,ST.pos.x,ST.pos.y);const near=Math.max(30,g.W*.075);
+  for(const el of $$('.kb',g.st)){
+    const p=toScreen(g,+el.dataset.x,+el.dataset.y);
+    if(Math.hypot(p.sx-hp.sx,(p.sy-hp.sy)*1.4)<near){
+      if(el.classList.contains('st-next')){enterKey(el);return}
+    }
+  }
+  if(roomDone(ST.room)&&ST.pos.y<.1&&Math.abs(ST.pos.x-.5)<.17){escapeDoor();return}
+}
+function enterKey(el){
+  const q=sQs().find(x=>x.id===el.dataset.q);if(!q||qDone(q))return;
+  ST.target=null;ST.moving=false;
+  if(ST.curQ!==q.id)ST.tries=0;   // 창을 닫았다 다시 들어와도 같은 문제면 남은 기회 그대로
+  ST.curQ=q.id;ST.qOpen=true;
+  const r=el.getBoundingClientRect();const h=$('#hero');if(h){h.classList.remove('hop');void h.offsetWidth;h.classList.add('hop')}
+  el.classList.add('entering');
+  setTimeout(()=>openQ(null,false,{x:r.left+r.width/2,y:r.top+r.height/2}),260);
+}
+function stageInput(){
+  const st=$('#stage');if(!st)return;
+  const aim=e=>{const g=geo();if(!g)return;const b=st.getBoundingClientRect();ST.target=toFloor(g,e.clientX-b.left,e.clientY-b.top)};
+  st.addEventListener('pointerdown',e=>{if(ST.busy||ST.qOpen)return;ST.drag=true;try{st.setPointerCapture(e.pointerId)}catch(_){}aim(e);st.focus({preventScroll:true})});
+  st.addEventListener('pointermove',e=>{if(ST.drag)aim(e)});
+  const up=()=>{ST.drag=false};st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
+}
+const KEYMAP={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',a:'left',d:'right',w:'up',s:'down',A:'left',D:'right',W:'up',S:'down'};
+window.addEventListener('keydown',e=>{if(ST.view!=='play'||ST.qOpen||$('.ov'))return;if(/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||''))return;const k=KEYMAP[e.key];if(k){ST.keys[k]=true;e.preventDefault()}});
+window.addEventListener('keyup',e=>{const k=KEYMAP[e.key];if(k)ST.keys[k]=false});
+window.addEventListener('resize',()=>{if(ST.view==='play')layoutRoom()});
 
 /* 첫 화면: 5개의 방 복도 */
 function sIntro(){
@@ -1232,9 +1368,10 @@ function sIntro(){
      <div class="er-intro-t">🗝️ 「${esc(n.title)}」 속에 갇혔다!</div>
      <div class="er-corridor">${ROOMS.map((R,r)=>{const c=roomQs(r).length;return `<div class="cd${c?'':' empty'}" style="--dr:${R.door}"><div class="cd-door"><span>${r+1}</span></div><b>${TIERS[r].name}</b><small>${c?`열쇠구멍 ${c}개`:'통과'}</small></div>`}).join('')}</div>
      <ul class="er-rules">
-       <li>🔑 방마다 있는 <b>열쇠구멍</b>을 눌러 문제를 풀어요.</li>
+       <li>👆 바닥을 <b>누르거나 끌어서</b> 캐릭터를 움직여요. (PC는 방향키도 돼요)</li>
+       <li>🔑 반짝이는 <b>열쇠구멍 상자</b>에 닿으면 문제가 열려요.</li>
        <li>🍽️ 맞히면 그 방 레벨의 <b>음식</b>을 골라 내 식탁에 차려요.</li>
-       <li>🚪 열쇠구멍을 모두 열면 <b>문이 열리고</b> 다음 방으로!</li>
+       <li>🚪 열쇠구멍을 모두 열면 <b>문이 열려요</b>. 문까지 걸어가면 다음 방으로!</li>
        <li>😵 두 번 틀리면 정답을 보고 넘어가요 (점수·음식은 없어요).</li>
      </ul>
      <button class="btn tang" style="font-size:20px;padding:14px" data-sact="start">🚪 1번 방으로 입장 ▶</button>
@@ -1243,11 +1380,12 @@ function sIntro(){
 
 /* 방 화면 (문제 창이 열려 있으면 함께) */
 function sPlay(trans){
-  const q=sCur();if(!q){ST.view='end';return sEnd()}
-  const r=tierFor(q);if(ST.room==null)ST.room=r;
-  app.innerHTML=`<div class="sapp wide"><div class="play-grid"><div>${hud()}${roomHTML(ST.room)}</div>${sideTable()}</div></div>${tray()}`;
+  if(ST.room==null){const q=firstOpen();if(!q){ST.view='end';return sEnd()}ST.room=tierFor(q)}
+  app.innerHTML=`<div class="sapp wide er-app"><div class="play-grid"><div>${hud()}${roomHTML(ST.room)}</div>${sideTable()}</div></div>${tray()}`;
   ST.justOpened=null;
+  stageInput();layoutRoom();requestAnimationFrame(layoutRoom);startLoop();
   if(ST.lastTier!==ST.room){if(ST.lastTier!==-1){const u=document.createElement('div');u.className='upg';u.innerHTML=`🚪 ${ST.room+1}번 방 입장!<br>Lv.${ST.room+1} ${TIERS[ST.room].name}`;document.body.appendChild(u);setTimeout(()=>u.remove(),2300)}ST.lastTier=ST.room}
+  if(roomDone(ST.room))setTimeout(()=>say('🚪 문이 열렸어! 문으로 가자!',2600),400);
   if(ST.qOpen)openQ(trans,true);
 }
 
@@ -1274,42 +1412,35 @@ function openQ(trans,instant,from){
   document.body.appendChild(m);
 }
 
-/* 문제를 마친 뒤: 방으로 돌아가거나, 방을 다 풀었으면 문 열고 탈출 */
+/* 문제를 마친 뒤: 같은 방 같은 자리로 돌아옴 (다 풀었으면 문이 열려 있음) */
 function nextQ(){
   ST.tries=0;const ov=$('#qov');if(ov)ov.remove();
-  if(ST.qOpen&&ST.curQ)ST.justOpened=ST.curQ;
-  ST.qOpen=false;ST.curQ=null;
-  const cur=sCur();ST.view='play';
-  if(!cur){ST.me.done=true;saveMe();return escapeDoor(true)}
-  const r=tierFor(cur);
-  if(ST.room!=null&&r!==ST.room)return escapeDoor(false,r);
-  ST.room=r;sPlay();
+  if(ST.curQ)ST.justOpened=ST.curQ;
+  ST.qOpen=false;ST.curQ=null;ST.view='play';
+  ST.pos.y=Math.min(.97,ST.pos.y+.09);ST.hitCool=performance.now()+700;
+  if(ST.room==null){const q=firstOpen();if(!q){ST.me.done=true;saveMe();ST.view='end';sEnd();confetti();return}ST.room=tierFor(q)}
+  if(!firstOpen()&&!ST.me.done){ST.me.done=true;saveMe()}
+  sPlay();
 }
-async function escapeDoor(final,nextRoom){
-  if(ST.room==null){ST.room=final?4:nextRoom}
-  ST.busy=true;
-  app.innerHTML=`<div class="sapp wide"><div class="play-grid"><div>${hud()}${roomHTML(ST.room,{opening:true})}</div>${sideTable()}</div></div>${tray()}`;
-  const door=$('.er-door'),hero=$('.er-hero');
-  await sleep(350);door&&door.classList.add('open');
-  await sleep(750);hero&&hero.classList.add('walk');
-  await sleep(950);
-  await burst('',final?'대탈출!':'방 탈출!',final?'모든 방 클리어 🎉':`${ST.room+1}번 방 클리어`);
+/* 문으로 나가기 */
+async function escapeDoor(){
+  if(ST.busy)return;ST.busy=true;ST.target=null;ST.keys={};
+  const final=!firstOpen();const cleared=ST.room;
+  const door=$('#door'),hero=$('#hero');
+  door&&door.classList.add('open');say(final?'🎉 마지막 문이다!':'🚪 탈출!',1200);
+  await sleep(550);
+  ST.pos={x:.5,y:.02};hero&&hero.classList.add('enter');
+  await sleep(750);
+  await burst('',final?'대탈출!':'방 탈출!',final?'모든 방 클리어 🎉':`${cleared+1}번 방 클리어`);
   const w=document.createElement('div');w.className='wipe';document.body.appendChild(w);
-  await sleep(260);ST.busy=false;
-  if(final){ST.view='end';sEnd();confetti()}else{ST.room=nextRoom;sPlay()}
+  await sleep(260);ST.busy=false;ST.pos={x:.5,y:.93};
+  if(final){ST.me.done=true;saveMe();ST.view='end';sEnd();confetti()}
+  else{ST.room=tierFor(firstOpen());sPlay()}
   setTimeout(()=>w.remove(),300);
 }
 
 Object.assign(SA,{
-  kh(b){
-    if(ST.busy)return;const q=sCur();
-    if(!q||b.dataset.q!==q.id){const done=(ST.me.answers||{})[b.dataset.q];toast(done?'이미 연 열쇠구멍이에요 🗝️':'반짝이는 열쇠구멍부터 풀어요! ✨');return}
-    // 창을 닫았다 다시 열어도 남은 기회는 그대로
-    const r=b.getBoundingClientRect();if(ST.curQ!==q.id)ST.tries=0;ST.qOpen=true;ST.curQ=q.id;
-    const hero=$('.er-hero');if(hero){hero.classList.remove('hop');void hero.offsetWidth;hero.classList.add('hop')}
-    setTimeout(()=>openQ(null,false,{x:r.left+r.width/2,y:r.top+r.height/2}),220);
-  },
-  'kh-close'(){if(ST.busy)return;const ov=$('#qov');if(ov)ov.remove();ST.qOpen=false}
+  'kh-close'(){if(ST.busy)return;const ov=$('#qov');if(ov)ov.remove();ST.qOpen=false;ST.pos.y=Math.min(.97,ST.pos.y+.1);ST.hitCool=performance.now()+700;const g=geo();g&&drawHero(g)}
 });
 
 (function boot(){
