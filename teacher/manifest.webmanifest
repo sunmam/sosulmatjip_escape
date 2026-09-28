@@ -1,0 +1,15 @@
+{
+  "name": "소설 맛집 교사용(방탈출형)",
+  "short_name": "방탈출 교사",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF3FF",
+  "theme_color": "#5AA9FF",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

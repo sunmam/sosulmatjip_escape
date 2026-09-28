@@ -1,0 +1,15 @@
+{
+  "name": "소설 맛집 학생용(방탈출형)",
+  "short_name": "소설 방탈출",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EEF3FF",
+  "theme_color": "#8E6CFF",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>소설 맛집 교사용(방탈출형)</title>
+<meta name="description" content="소설 방탈출 수업을 관리하는 교사용 화면">
+<meta name="theme-color" content="#5AA9FF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="방탈출 교사">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gowun+Dodum&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<style>
+:root{
+  color-scheme: light;
+  --paper:#EEF3FF; --paper2:#E2EAFF; --card:#FFFFFF; --ink:#1C1A3B; --muted:#5E5C82;
+  --tang:#FF7A3D; --tang-d:#D9531A; --sun:#FFD23F; --sun-d:#E0A800; --mint:#23C4A2; --mint-d:#0E927A;
+  --pink:#FF5C8A; --pink-d:#D8305F; --sky:#5AA9FF; --sky-d:#2A77D6; --grape:#8E6CFF;
+  --wood:#E9A15B; --wood-d:#B8703A;
+  --display:"Black Han Sans","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --ui:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --line:2.5px solid var(--ink);
+  --pop:4px 5px 0 var(--ink);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  background-image:radial-gradient(rgba(28,26,59,.09) 1.2px,transparent 1.4px);background-size:12px 12px;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
+.wrap{padding-inline:16px;padding-block:14px 60px;max-width:1200px;margin:0 auto}
+.muted{color:var(--muted)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+.stack{display:grid;gap:12px}
+
+/* ---------- comic primitives ---------- */
+.card{background:var(--card);border:var(--line);border-radius:18px;box-shadow:var(--pop);padding:18px}
+.btn{font-family:var(--ui);font-size:16px;border:var(--line);border-radius:14px;background:var(--card);padding:9px 16px;
+  box-shadow:3px 4px 0 var(--ink);transition:transform .08s,box-shadow .08s;white-space:nowrap}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 5px 0 var(--ink)}
+.btn:active{transform:translate(3px,4px);box-shadow:0 0 0 var(--ink)}
+.btn.tang{background:var(--tang);color:#fff}
+.btn.sun{background:var(--sun)}
+.btn.mint{background:var(--mint);color:#fff}
+.btn.pink{background:var(--pink);color:#fff}
+.btn.sky{background:var(--sky);color:#fff}
+.btn.sm{font-size:14px;padding:5px 11px;border-radius:10px;box-shadow:2px 3px 0 var(--ink)}
+.btn.ghost{background:transparent;box-shadow:none;border-style:dashed}
+.btn[disabled]{opacity:.45;pointer-events:none}
+label.fld{display:grid;gap:4px;font-family:var(--ui);font-size:14px}
+input.in,select.in,textarea.in{width:100%;border:var(--line);border-radius:12px;padding:9px 12px;background:#fff;font-family:var(--body);font-size:15px}
+textarea.in{resize:vertical}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--ui);font-size:14px;border:2px solid var(--ink);border-radius:999px;padding:2px 10px;background:#fff}
+.tag{font-family:var(--ui);font-size:13px;border:2px solid var(--ink);border-radius:8px;padding:0 8px;background:var(--sun)}
+.lv-하{background:#C9F3E6}.lv-중{background:#FFE7A6}.lv-상{background:#FFC7D6}
+.seg{display:inline-flex;border:var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.seg button{border:0;background:transparent;padding:5px 11px;font-family:var(--ui);font-size:14px}
+.seg button+button{border-left:2px solid var(--ink)}
+.seg button.on{background:var(--ink);color:#fff}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(140%);background:var(--ink);color:#fff;
+  font-family:var(--ui);padding:10px 18px;border-radius:14px;z-index:90;transition:transform .25s;max-width:calc(100% - 32px);text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+/* ---------- 3D logo ---------- */
+.logo{font-family:var(--display);font-size:clamp(44px,11vw,92px);line-height:1;color:var(--sun);letter-spacing:.02em;
+  -webkit-text-stroke:2px var(--ink);
+  text-shadow:1px 1px 0 var(--tang),2px 2px 0 var(--tang),3px 3px 0 var(--tang),4px 4px 0 var(--tang-d),5px 5px 0 var(--tang-d),6px 6px 0 var(--tang-d),7px 7px 0 var(--ink),8px 9px 0 var(--ink)}
+.logo.sm{font-size:30px;-webkit-text-stroke:1.5px var(--ink);text-shadow:1px 1px 0 var(--tang),2px 2px 0 var(--tang-d),3px 3px 0 var(--ink),4px 4px 0 var(--ink)}
+
+/* ---------- landing ---------- */
+.home{min-height:100%;display:grid;place-items:center;padding-inline:16px;padding-block:30px}
+.home-in{display:grid;gap:22px;justify-items:center;text-align:center;max-width:760px}
+.spool{font-size:64px;animation:bob 3s ease-in-out infinite;filter:drop-shadow(4px 6px 0 rgba(28,26,59,.25))}
+.doors{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px;width:100%;perspective:1000px}
+.door{border:var(--line);border-radius:22px;padding:22px;text-align:left;box-shadow:6px 8px 0 var(--ink);transform:rotateY(-8deg) rotateX(4deg);transition:transform .25s;display:grid;gap:6px}
+.door:nth-child(2){transform:rotateY(8deg) rotateX(4deg)}
+.door:hover{transform:rotateY(0) translateY(-6px)}
+.door b{font-family:var(--display);font-size:30px;font-weight:400}
+.door .big{font-size:44px}
+
+/* ---------- teacher ---------- */
+.tbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--card);border-bottom:var(--line);padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tabs button{font-family:var(--ui);font-size:16px;border:var(--line);border-radius:12px 12px 4px 4px;background:var(--paper2);padding:6px 14px}
+.tabs button.on{background:var(--sun);box-shadow:3px 3px 0 var(--ink)}
+.save-dot{font-family:var(--ui);font-size:13px;color:var(--muted);margin-left:auto}
+.grid2{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+.sec-h{display:flex;align-items:center;gap:10px;margin-block:4px 14px;flex-wrap:wrap}
+.sec-h h2{font-size:26px}
+
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:22px;perspective:900px}
+.book{position:relative;border:var(--line);border-radius:6px 16px 16px 6px;padding:16px 14px 14px 26px;min-height:200px;display:flex;flex-direction:column;gap:6px;
+  transform:rotateY(-14deg);transform-origin:left;transition:transform .3s;box-shadow:8px 8px 0 var(--ink)}
+.book:hover{transform:rotateY(0) translateY(-4px)}
+.book::before{content:"";position:absolute;left:0;top:0;bottom:0;width:14px;background:rgba(28,26,59,.22);border-right:2px solid var(--ink)}
+.book h3{font-size:24px}
+.book .by{font-family:var(--ui);font-size:14px}
+.book .acts{margin-top:auto;display:flex;gap:6px;flex-wrap:wrap}
+.book.sel{outline:4px dashed var(--ink);outline-offset:5px}
+
+.classes{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.ccard{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+.ccard .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ccard .hd h3{font-size:26px}
+.gchips{display:flex;flex-wrap:wrap;gap:6px}
+.gchips .chip button{border:0;background:none;padding:0;font-size:14px;line-height:1}
+.switch{display:inline-flex;align-items:center;gap:8px;font-family:var(--ui);cursor:pointer}
+.switch i{width:52px;height:28px;border:var(--line);border-radius:999px;background:#ddd;position:relative;transition:background .2s}
+.switch i::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;border:2px solid var(--ink);transition:left .2s}
+.switch.on i{background:var(--mint)}
+.switch.on i::after{left:25px}
+.linkbox{display:flex;gap:6px;align-items:center;background:var(--paper2);border:2px dashed var(--ink);border-radius:10px;padding:6px 10px;font-family:var(--ui);font-size:14px}
+.linkbox code{font-family:ui-monospace,Consolas,monospace;font-size:14px}
+
+.qlist{display:grid;gap:14px}
+.qrow{display:grid;grid-template-columns:54px 1fr;gap:12px;background:var(--card);border:var(--line);border-radius:16px;box-shadow:3px 4px 0 var(--ink);padding:12px}
+.qnum{font-family:var(--display);font-size:22px;display:grid;place-items:center;border:var(--line);border-radius:12px;height:54px}
+.qtools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.qtools .scene{width:54px;text-align:center;font-size:20px;padding:4px}
+.mcopt{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
+.mcopt input[type=radio]{width:22px;height:22px;accent-color:var(--mint)}
+.oxpick button{font-family:var(--display);font-size:22px;width:56px}
+.lvhead{font-family:var(--display);font-size:20px;display:flex;align-items:center;gap:8px;margin-top:6px}
+@media (max-width:560px){.qrow{grid-template-columns:1fr}.qnum{height:40px}}
+
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-family:var(--ui);border:var(--line);border-radius:999px;padding:5px 14px;background:#fff}
+.pill.on{background:var(--ink);color:#fff}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.stat{background:#fff;border:var(--line);border-radius:14px;padding:10px 14px}
+.stat b{display:block;font-family:var(--display);font-size:30px;font-weight:400;font-variant-numeric:tabular-nums}
+.stat span{font-family:var(--ui);font-size:13px;color:var(--muted)}
+.board{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.board{grid-template-columns:1fr}}
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:end;gap:8px;perspective:700px;padding-top:10px}
+.pod{display:grid;justify-items:center;gap:4px;text-align:center}
+.pod .blk{width:100%;border:var(--line);border-radius:10px 10px 0 0;display:grid;place-items:center;font-family:var(--display);font-size:30px;color:#fff;
+  transform:rotateX(12deg);transform-origin:bottom;box-shadow:inset -10px 0 0 rgba(0,0,0,.14),4px 0 0 var(--ink)}
+.pod.p1 .blk{height:120px;background:var(--sun);color:var(--ink)}
+.pod.p2 .blk{height:88px;background:var(--sky)}
+.pod.p3 .blk{height:64px;background:var(--tang)}
+.pod .nm{font-family:var(--ui);font-size:14px;line-height:1.2}
+.pod .sc{font-size:12px;color:var(--muted)}
+.groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;perspective:1100px}
+.gcard{text-align:left;display:grid;gap:10px;transform:rotateX(8deg);transform-origin:bottom;transition:transform .25s}
+.gcard:hover{transform:rotateX(0) translateY(-6px)}
+.gcard h3{font-size:24px}
+.avs{display:flex;flex-wrap:wrap;gap:4px}
+.bar{height:12px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
+.bar i{display:block;height:100%;background:repeating-linear-gradient(45deg,var(--mint) 0 8px,#4FDDBE 8px 16px)}
+.folders{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:22px}
+.folder{position:relative;background:var(--sun);border:var(--line);border-radius:4px 16px 16px 16px;padding:18px 14px 14px;box-shadow:var(--pop);display:grid;gap:8px;margin-top:14px}
+.folder::before{content:"";position:absolute;top:-16px;left:-2.5px;width:44%;height:16px;background:var(--sun);border:var(--line);border-bottom:0;border-radius:10px 10px 0 0}
+.folder.act{background:#A8F0DD}.folder.act::before{background:#A8F0DD}
+.folder h3{font-size:22px}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.srow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:2px dashed rgba(28,26,59,.2)}
+.srch{display:flex;gap:6px}
+.srch input{width:90px}
+
+/* avatar */
+.av{--c:var(--sun);width:40px;height:40px;border-radius:50%;border:2.5px solid var(--ink);display:inline-grid;place-items:center;font-size:22px;flex:none;
+  background:radial-gradient(circle at 32% 28%,#fff 0 12%,transparent 13%),radial-gradient(circle at 50% 60%,var(--c),color-mix(in srgb,var(--c) 70%,#000));box-shadow:2px 3px 0 var(--ink)}
+.av.lg{width:64px;height:64px;font-size:36px}
+.av.xs{width:30px;height:30px;font-size:16px;box-shadow:1px 2px 0 var(--ink)}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(28,26,59,.55);display:grid;place-items:center;padding:16px;animation:fade .2s}
+.modal-in{background:var(--paper);border:var(--line);border-radius:22px;box-shadow:8px 10px 0 var(--ink);width:min(1000px,100%);max-height:calc(100% - 20px);overflow:auto;padding:20px;animation:pop .3s cubic-bezier(.2,1.4,.4,1)}
+.modal-in.narrow{width:min(440px,100%)}
+.modal-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.modal-hd h2{font-size:26px;flex:1}
+.mstud{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+.dots{display:flex;flex-wrap:wrap;gap:3px}
+.dots i{width:16px;height:16px;border-radius:5px;border:2px solid var(--ink);background:#fff;font-style:normal;font-size:10px;display:grid;place-items:center}
+.dots i.ok{background:var(--mint)}.dots i.ok2{background:#9BE7D6}.dots i.no{background:var(--pink)}
+
+/* ---------- food photos ---------- */
+.fpic{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:50%;background:#FFE9C7;border:3px solid #fff;
+  box-shadow:0 0 0 2.5px var(--ink),0 8px 14px rgba(28,26,59,.28);filter:saturate(1.18) contrast(1.05)}
+.femo{display:grid;place-items:center;font-size:clamp(28px,9vw,60px);line-height:1;container-type:inline-size}
+.fpic.sq{border-radius:18px}
+
+/* ---------- dining table (top view, big food) ---------- */
+.tbl{position:relative;border:3px solid var(--ink);border-radius:26px;padding:18px 14px 20px;
+  background:
+    linear-gradient(90deg,rgba(255,92,138,.22) 50%,transparent 50%) 0 0/40px 40px,
+    linear-gradient(0deg,rgba(255,92,138,.22) 50%,transparent 50%) 0 0/40px 40px,#FFF6F0;
+  box-shadow:0 10px 0 var(--wood),0 10px 0 3px var(--ink),0 26px 22px rgba(28,26,59,.22);margin-bottom:22px}
+.tbl-grid{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:14px 12px;justify-items:center}
+.dishw{width:100%;max-width:170px;display:grid;justify-items:center;gap:6px;transform:rotate(var(--r,0deg))}
+.dishw .nm{font-family:var(--ui);font-size:14px;line-height:1.15;text-align:center;background:#fff;border:2px solid var(--ink);border-radius:999px;padding:1px 9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dishw.new{animation:dropIn .7s cubic-bezier(.3,1.6,.5,1) both}
+.tbl-empty{min-height:120px;display:grid;place-items:center;font-family:var(--ui);color:var(--muted);text-align:center}
+.tbl-sm .tbl{padding:10px;border-radius:16px;box-shadow:0 6px 0 var(--wood),0 6px 0 2px var(--ink);margin-bottom:12px}
+.tbl-sm .tbl-grid{gap:6px}
+.tbl-sm .fpic{border-width:2px;box-shadow:0 0 0 1.5px var(--ink),0 3px 5px rgba(28,26,59,.25)}
+.tbl-sm .tbl-empty{min-height:54px;font-size:13px}
+
+/* ---------- 내 식탁 (항상 보이기) ---------- */
+.tray{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:25;width:min(560px,calc(100% - 20px));
+  display:flex;align-items:center;gap:10px;background:var(--card);border:var(--line);border-radius:20px;box-shadow:4px 5px 0 var(--ink);padding:8px 10px;text-align:left}
+.tray-l{font-family:var(--ui);font-size:15px;line-height:1.1;flex:none;display:grid;gap:2px}
+.tray-l b{font-family:var(--display);font-weight:400;font-size:22px}
+.tray-foods{flex:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:3px 2px;min-height:56px;align-items:center}
+.tray-foods::-webkit-scrollbar{display:none}
+.tray-foods .fpic{width:50px;flex:none;border-width:2px;box-shadow:0 0 0 1.5px var(--ink),0 3px 5px rgba(28,26,59,.25)}
+.tray-foods .femo{font-size:26px}
+.tray-foods .none{font-family:var(--ui);font-size:13px;color:var(--muted)}
+.tray .open{font-family:var(--ui);font-size:13px;flex:none;border:2px solid var(--ink);border-radius:10px;padding:4px 8px;background:var(--sun)}
+.tray.bump{animation:bumpT .5s}
+@keyframes bumpT{30%{transform:translateX(-50%) scale(1.06)}60%{transform:translateX(-50%) scale(.98)}}
+.play-grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+.play-grid>*{min-width:0}
+.side-tbl{display:none}
+@media (min-width:920px){
+  .sapp.wide{max-width:1040px}
+  .play-grid{grid-template-columns:minmax(0,1fr) minmax(0,440px);align-items:start;gap:28px}
+  .side-tbl{display:block;position:sticky;top:calc(96px + env(safe-area-inset-top,0px))}
+  .sapp.wide + .tray{display:none}
+}
+.side-tbl h2{font-size:24px;margin-bottom:10px}
+
+/* ---------- 메뉴판 (교사) ---------- */
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.mfood{background:#fff;border:var(--line);border-radius:18px;box-shadow:3px 4px 0 var(--ink);padding:10px;display:grid;gap:6px;justify-items:center;text-align:center;position:relative}
+.mfood .fpic{width:96px}
+.mfood.off{opacity:.5}
+.mfood.off .fpic{filter:grayscale(1)}
+.mfood input.in{padding:4px 8px;font-size:14px;text-align:center}
+.mfood .x{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);background:#fff;font-size:13px;line-height:1;padding:0}
+.mfood .ph{position:absolute;top:6px;left:6px;width:28px;height:28px;border-radius:50%;border:2px solid var(--ink);background:#fff;font-size:13px;line-height:1;padding:0}
+.qty{display:inline-flex;align-items:center;border:var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.qty button{border:0;background:var(--paper2);width:34px;height:32px;font-family:var(--display);font-size:18px}
+.qty b{min-width:40px;text-align:center;font-family:var(--display);font-weight:400;font-size:18px;font-variant-numeric:tabular-nums}
+.tier-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px;flex-wrap:wrap}
+.tier-h h3{font-size:22px}
+.addfood{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:620px){.addfood{grid-template-columns:1fr;justify-items:stretch}.addfood .pv{justify-self:center}}
+.addfood .pv{display:grid;gap:8px;justify-items:center}
+.addfood .pv .fpic{width:140px}
+.addfood .pv .fpic.wait{animation:pulse 1s infinite}
+.cands{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.cands button{padding:0;border:0;background:none;width:40px;border-radius:50%}
+.cands button.on{outline:3px solid var(--tang);outline-offset:2px}
+.addfood .pv .cands .fpic{width:40px;border-width:1.5px;box-shadow:0 0 0 1.5px var(--ink)}
+.qrbox{display:grid;place-items:center;background:#fff;border:var(--line);border-radius:18px;padding:18px}
+.qrbox img,.qrbox canvas{width:min(70vw,300px)!important;height:auto!important;image-rendering:pixelated}
+
+/* ---------- student ---------- */
+.sapp{max-width:520px;margin:0 auto;padding-inline:16px;padding-block:12px 120px;min-height:100%}
+.hud{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--line);border-radius:18px;padding:8px 12px;box-shadow:3px 4px 0 var(--ink);position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:15}
+.hud .nm{font-family:var(--ui);font-size:16px;line-height:1.1}
+.hud .sc{font-family:var(--display);font-size:24px;margin-left:auto;font-variant-numeric:tabular-nums}
+.eps{display:flex;gap:4px;margin:12px 2px}
+.eps i{flex:1;height:10px;border:2px solid var(--ink);border-radius:4px;background:#fff}
+.eps i.ok{background:var(--mint)}.eps i.no{background:var(--pink)}.eps i.cur{background:var(--sun);animation:pulse 1s infinite}
+.panel{background:#fff;border:3px solid var(--ink);border-radius:8px;box-shadow:6px 7px 0 var(--ink);overflow:hidden;position:relative}
+.panel-top{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:3px solid var(--ink);background:var(--sun)}
+.panel-top .ep{font-family:var(--display);font-size:18px}
+.scene{position:relative;height:170px;display:grid;place-items:center;overflow:hidden;border-bottom:3px solid var(--ink);
+  background:repeating-conic-gradient(from 0deg at 50% 55%,rgba(28,26,59,.10) 0 3deg,transparent 3deg 10deg),radial-gradient(circle at 50% 55%,#FFF4C2,#FFD7BF)}
+.scene-emo{font-size:92px;line-height:1;filter:drop-shadow(5px 7px 0 rgba(28,26,59,.3));animation:bob 2.6s ease-in-out infinite}
+.sfx{position:absolute;top:12px;right:14px;font-family:var(--display);font-size:34px;color:var(--pink);-webkit-text-stroke:1.5px var(--ink);transform:rotate(10deg);
+  text-shadow:3px 3px 0 var(--ink);animation:sfx .6s cubic-bezier(.2,1.6,.4,1) both .25s}
+.sfx.l{left:14px;right:auto;top:auto;bottom:10px;transform:rotate(-8deg);color:var(--sky);font-size:24px}
+.bubble{position:relative;margin:16px 14px 16px;padding:14px 16px;border:3px solid var(--ink);border-radius:22px;background:#fff;font-family:var(--ui);font-size:19px;line-height:1.45}
+.bubble::before{content:"";position:absolute;top:-16px;left:38px;border:14px solid transparent;border-bottom-color:var(--ink);border-top:0}
+.bubble::after{content:"";position:absolute;top:-11px;left:41px;border:11px solid transparent;border-bottom-color:#fff;border-top:0}
+.answers{display:grid;gap:12px;margin-top:18px}
+.oxs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.key{font-family:var(--display);font-size:64px;line-height:1;padding:18px 0 14px;border:3px solid var(--ink);border-radius:20px;color:#fff;
+  box-shadow:0 9px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.key:active{transform:translateY(7px);box-shadow:0 2px 0 var(--ink)}
+.key.o{background:radial-gradient(circle at 30% 25%,#8CC6FF,var(--sky) 60%,var(--sky-d))}
+.key.x{background:radial-gradient(circle at 30% 25%,#FF9DB8,var(--pink) 60%,var(--pink-d))}
+.mc{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center;text-align:left;font-family:var(--ui);font-size:17px;background:#fff;border:3px solid var(--ink);border-radius:16px;padding:10px 12px;box-shadow:0 6px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.mc:active{transform:translateY(5px);box-shadow:0 1px 0 var(--ink)}
+.mc b{width:36px;height:36px;border-radius:50%;border:2.5px solid var(--ink);display:grid;place-items:center;font-family:var(--display);font-weight:400;background:var(--sun)}
+.mc:nth-child(2) b{background:#A8F0DD}.mc:nth-child(3) b{background:#FFC7D6}.mc:nth-child(4) b{background:#C8DEFF}
+.shortbox{display:grid;gap:10px}
+.shortbox textarea{min-height:90px;font-family:var(--ui);font-size:18px}
+.hintline{font-family:var(--ui);font-size:14px;color:var(--muted);text-align:center}
+.shake{animation:shake .45s}
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;justify-content:center;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.dock .btn{pointer-events:auto;font-size:18px;padding:10px 22px;border-radius:18px;background:var(--sun)}
+.dock .cnt{display:inline-grid;place-items:center;min-width:26px;height:26px;border-radius:13px;background:var(--ink);color:#fff;font-size:14px;margin-left:6px}
+.dock .btn.bump{animation:bump .5s}
+
+.chars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.charb{display:grid;justify-items:center;gap:4px;padding:10px 4px;border:var(--line);border-radius:16px;background:#fff;font-family:var(--ui);font-size:13px;transition:transform .15s}
+.charb.on{background:var(--sun);transform:translateY(-4px) rotate(-3deg);box-shadow:3px 5px 0 var(--ink)}
+.gpick{display:flex;flex-wrap:wrap;gap:8px}
+.gpick button{font-family:var(--ui);font-size:16px;border:var(--line);border-radius:12px;padding:8px 14px;background:#fff;box-shadow:0 4px 0 var(--ink)}
+.gpick button.on{background:var(--mint);color:#fff;transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+.cover{perspective:900px;display:grid;place-items:center;padding:12px 0 6px}
+.cover-book{width:210px;aspect-ratio:.72;border:3px solid var(--ink);border-radius:6px 18px 18px 6px;background:linear-gradient(135deg,var(--tang),var(--pink));color:#fff;
+  padding:22px 18px 18px 30px;display:flex;flex-direction:column;gap:6px;position:relative;box-shadow:12px 12px 0 var(--ink);animation:bookin 1s cubic-bezier(.2,1.2,.4,1) both;transform-style:preserve-3d}
+.cover-book::before{content:"";position:absolute;left:0;top:0;bottom:0;width:16px;background:rgba(0,0,0,.2);border-right:2px solid var(--ink)}
+.cover-book h2{font-size:38px;line-height:1.05;-webkit-text-stroke:1px var(--ink);text-shadow:3px 3px 0 var(--ink)}
+.cover-book .by{font-family:var(--ui);font-size:17px}
+.cover-book .emo{margin-top:auto;font-size:56px;text-align:right}
+
+/* overlays */
+.ov{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(28,26,59,.6);animation:fade .2s}
+.burst{position:fixed;inset:0;z-index:70;display:grid;place-items:center;pointer-events:none}
+.burst .star{width:min(80vw,340px);aspect-ratio:1;display:grid;place-items:center;background:var(--sun);border:0;
+  clip-path:polygon(50% 0,61% 22%,85% 10%,78% 36%,100% 45%,79% 58%,90% 84%,63% 76%,50% 100%,37% 76%,10% 84%,21% 58%,0 45%,22% 36%,15% 10%,39% 22%);
+  animation:burst .9s cubic-bezier(.2,1.5,.4,1) both;filter:drop-shadow(0 0 0 var(--ink))}
+.burst .star span{font-family:var(--display);font-size:clamp(40px,12vw,64px);color:var(--ink);transform:rotate(-8deg);text-align:center;line-height:1}
+.burst .star small{display:block;font-size:.45em;color:var(--tang-d)}
+.burst.retry .star{background:#C8DEFF}
+.burst.pass .star{background:#FFC7D6}
+.wipe{position:fixed;inset:0;z-index:65;pointer-events:none;background:var(--ink);animation:wipe .55s ease-in-out both}
+.picker{background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:8px 10px 0 var(--ink);width:min(640px,100%);max-height:calc(100% - 10px);overflow:auto;padding:16px;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.picker-hd{display:grid;gap:4px;text-align:center;margin-bottom:12px}
+.picker-hd .tier{justify-self:center}
+.picker-hd h2{font-size:26px}
+.foods{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px}
+@media (max-width:420px){.foods{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.food{position:relative;border:2.5px solid var(--ink);border-radius:20px;background:#fff;padding:10px 8px 8px;display:grid;justify-items:center;gap:5px;
+  box-shadow:0 6px 0 var(--ink);transition:transform .15s;font-family:var(--ui);font-size:15px;line-height:1.2;text-align:center}
+.food:hover{transform:translateY(-4px) rotate(-1.5deg)}
+.food .fpic{width:100%;max-width:130px}
+.food .left{font-size:12px;border:2px solid var(--ink);border-radius:999px;padding:0 8px;background:var(--sun)}
+.food.gone{filter:grayscale(1);opacity:.55;pointer-events:none;box-shadow:0 2px 0 var(--ink);transform:translateY(4px)}
+.food.gone::after{content:"품절";position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) rotate(-14deg);font-family:var(--display);font-size:26px;color:var(--pink-d);border:3px solid var(--pink-d);border-radius:8px;padding:0 6px;background:rgba(255,255,255,.88)}
+.food .who{font-size:11px;color:var(--muted)}
+.reveal{display:grid;justify-items:center;gap:14px;text-align:center;cursor:pointer;border:0;background:transparent;color:#fff}
+.rays{position:absolute;width:min(130vw,640px);aspect-ratio:1;border-radius:50%;background:repeating-conic-gradient(rgba(255,210,63,.55) 0 10deg,transparent 10deg 20deg);animation:spin 8s linear infinite;z-index:-1;
+  -webkit-mask:radial-gradient(circle,#000 30%,transparent 70%);mask:radial-gradient(circle,#000 30%,transparent 70%)}
+.bigdish{position:relative;width:min(78vw,340px);animation:bigpop .9s cubic-bezier(.2,1.4,.4,1) both}
+.bigdish .fpic{border-width:6px;box-shadow:0 0 0 4px var(--ink),0 16px 0 var(--ink),0 34px 44px rgba(0,0,0,.4)}
+.bigdish .femo{font-size:min(40vw,170px)}
+.bigname{font-family:var(--display);font-size:clamp(30px,9vw,44px);color:var(--sun);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 4px 0 var(--ink)}
+.bigdesc{font-family:var(--ui);font-size:17px;background:#fff;color:var(--ink);border:2.5px solid var(--ink);border-radius:14px;padding:6px 14px}
+.tap{font-family:var(--ui);font-size:15px;animation:pulse 1.2s infinite}
+.flyer{position:fixed;z-index:80;width:140px;pointer-events:none;transition:transform .75s cubic-bezier(.5,-0.3,.4,1),opacity .75s}
+.sheet{background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:8px 10px 0 var(--ink);width:min(560px,100%);padding:16px;animation:pop .35s cubic-bezier(.2,1.4,.4,1);max-height:calc(100% - 10px);overflow:auto}
+.sheet h2{font-size:26px;text-align:center}
+.upg{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:75;pointer-events:none;background:var(--grape);color:#fff;font-family:var(--display);font-size:26px;border:3px solid var(--ink);border-radius:16px;padding:8px 18px;box-shadow:5px 6px 0 var(--ink);animation:upg 2.2s ease both;text-align:center;white-space:nowrap}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:85;overflow:hidden}
+.confetti i{position:absolute;top:-20px;width:10px;height:16px;border:1.5px solid var(--ink);animation:fall linear forwards}
+.endcard{display:grid;gap:14px;text-align:center}
+.endcard .score{font-family:var(--display);font-size:72px;line-height:1;color:var(--tang);-webkit-text-stroke:2px var(--ink);text-shadow:5px 6px 0 var(--ink)}
+
+@keyframes bob{50%{transform:translateY(-8px) rotate(-3deg)}}
+@keyframes fade{from{opacity:0}}
+@keyframes pop{from{transform:scale(.6) rotate(-3deg);opacity:0}}
+@keyframes pulse{50%{opacity:.45}}
+@keyframes shake{20%,60%{transform:translateX(-10px) rotate(-1deg)}40%,80%{transform:translateX(10px) rotate(1deg)}}
+@keyframes sfx{from{transform:scale(0) rotate(-30deg)}}
+@keyframes burst{0%{transform:scale(0) rotate(-40deg)}60%{transform:scale(1.1) rotate(6deg)}80%{transform:scale(1)}90%{opacity:1}100%{transform:scale(1.15);opacity:0}}
+@keyframes wipe{0%{clip-path:polygon(0 0,0 0,-20% 100%,-20% 100%)}50%{clip-path:polygon(0 0,120% 0,100% 100%,-20% 100%)}100%{clip-path:polygon(120% 0,120% 0,100% 100%,100% 100%)}}
+@keyframes bigpop{0%{transform:scale(0) rotateY(-540deg)}70%{transform:scale(1.08) rotateY(20deg)}100%{transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes dropIn{0%{transform:translateY(-160px) scale(1.7) rotate(-20deg);opacity:0}100%{transform:rotate(var(--r,0deg))}}
+@keyframes bump{30%{transform:scale(1.25) rotate(-5deg)}60%{transform:scale(.95)}}
+@keyframes upg{0%{transform:translateX(-50%) scale(0)}12%{transform:translateX(-50%) scale(1.15)}20%,80%{transform:translateX(-50%) scale(1);opacity:1}100%{transform:translateX(-50%) translateY(-30px);opacity:0}}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes bookin{from{transform:rotateY(-90deg) scale(.7)}}
+@keyframes trFlip{from{transform:perspective(900px) rotateY(-100deg);opacity:0}}
+@keyframes trZoom{0%{transform:scale(.15) rotate(-14deg);opacity:0}70%{transform:scale(1.05) rotate(2deg)}}
+@keyframes trSlide{from{transform:translateX(120%) skewX(-14deg)}}
+@keyframes trDrop{0%{transform:translateY(-130%) rotate(9deg)}65%{transform:translateY(4%) rotate(-2deg)}}
+@keyframes trTwist{from{transform:perspective(900px) rotateX(95deg);opacity:0}}
+@keyframes trCube{from{transform:perspective(900px) translateZ(-300px) rotateY(80deg);opacity:0}}
+.tr-flip{animation:trFlip .7s cubic-bezier(.2,1.2,.4,1) both;transform-origin:left}
+.tr-zoom{animation:trZoom .6s cubic-bezier(.2,1.2,.4,1) both}
+.tr-slide{animation:trSlide .55s cubic-bezier(.2,1.1,.4,1) both}
+.tr-drop{animation:trDrop .7s cubic-bezier(.3,1.2,.5,1) both}
+.tr-twist{animation:trTwist .7s cubic-bezier(.2,1.2,.4,1) both;transform-origin:top}
+.tr-cube{animation:trCube .7s cubic-bezier(.2,1.1,.4,1) both}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.cset>summary,details>summary{cursor:pointer;font-family:var(--ui);font-size:16px}
+.cset{border-top:2px dashed rgba(28,26,59,.2);padding-top:10px}
+.cname{font-family:var(--display);font-size:22px;padding:8px 12px}
+
+/* ---------- 코스 상차림 (레벨별 줄) ---------- */
+.tbl.course{display:grid;gap:12px;padding:14px 12px 16px}
+.crow{display:grid;gap:8px;background:rgba(255,255,255,.72);border:2px dashed rgba(28,26,59,.28);border-radius:16px;padding:8px 8px 10px}
+.clab{justify-self:start;font-family:var(--ui);font-size:13px;border:2px solid var(--ink);border-radius:999px;padding:1px 10px}
+.clab b{font-family:var(--display);font-weight:400;margin-left:2px}
+.course .tbl-grid{gap:10px 8px}
+.course .dishw{max-width:130px}
+.course .dishw .nm{font-size:12px;padding:0 7px}
+.tapme{cursor:pointer;transition:transform .15s}
+.tapme:hover{transform:rotate(0) scale(1.06)}
+/* 휴대폰에서 "내 식탁 크게"는 화면 가득 */
+@media (max-width:600px){
+  #tblsheet{padding:0;place-items:stretch}
+  #tblsheet .sheet{width:100%;max-height:100%;height:100%;border-radius:0;border:0;box-shadow:none;padding:14px 12px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column}
+  #tblsheet .sheet>.row{position:sticky;bottom:0;padding-top:10px;background:var(--paper);margin-top:auto}
+}
+/* PC 옆 식탁: 화면 높이에 맞추고 넘치면 스크롤 */
+@media (min-width:920px){.side-tbl{max-height:calc(100vh - 110px);overflow:auto}}
+/* 아래 트레이: 최근 음식을 겹쳐 쌓기 */
+.tray-foods.stack{overflow:visible;gap:0}
+.tray-foods.stack .fpic{width:48px}
+.tray-foods.stack .fpic+.fpic{margin-left:-16px}
+.tray-more{font-family:var(--display);font-size:16px;margin-left:6px;flex:none}
+/* 음식 크게 보기 */
+.dishzoom{display:grid;justify-items:center;gap:12px;text-align:center;border:0;background:transparent;color:#fff;cursor:pointer}
+.dishzoom .bigdish{width:min(74vw,300px)}
+/* 모바일 최적화: 트레이는 화면 안에서만, 문제 카드 머리줄은 줄바꿈 */
+.panel-top{flex-wrap:wrap;row-gap:4px}
+.tray{gap:8px;padding:6px 8px}
+.tray-foods{min-width:0;overflow:hidden}
+.tray-foods.stack{overflow:hidden}
+.tray-foods.stack .fpic{width:44px}
+.tray-foods.stack .fpic+.fpic{margin-left:-14px}
+.tray .open{padding:4px 6px}
+@media (max-width:380px){.tray-l{font-size:13px}.tray-l b{font-size:19px}.tray-foods.stack .fpic:nth-child(n+5){display:none}}
+/* 식탁 도착 화면: 휴대폰에서 음식 한 줄 4개가 딱 맞게 */
+@media (max-width:600px){
+  .tbl.course{padding:10px 8px 12px;gap:10px;border-radius:20px}
+  .crow{padding:6px 6px 8px}
+  .course .tbl-grid{gap:8px 6px}
+  .course .dishw .nm{font-size:11px;padding:0 5px}
+  #tblsheet .sheet h2{font-size:22px}
+}
+/* 작은 휴대폰: 입장 화면 캐릭터 칸이 화면을 넘지 않게 */
+.stack{grid-template-columns:minmax(0,1fr)}
+.chars{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:400px){.chars{gap:6px}.charb{padding:8px 2px}.charb .av.lg{width:50px;height:50px;font-size:28px}}
+/* 문제 탭: 늘 보이는 ＋ 문제 버튼 */
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;font-size:18px;padding:12px 20px;border-radius:999px;box-shadow:4px 5px 0 var(--ink)}
+.qlist{padding-bottom:10px}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" class="toast" role="status"></div>
+<script>
+/* ▼▼▼ 설정 ▼▼▼
+   API_URL     : Apps Script 웹앱 주소 (…/exec). 비워 두면 이 브라우저에만 저장되는 체험 모드.
+   STUDENT_URL : (교사용) 학생용 사이트 주소. 교사 화면에서도 바꿀 수 있어요. */
+const API_URL = "https://script.google.com/macros/s/AKfycbwSv5Y2K0LNb4lisMof_KOT0U6Xr3_YdOR4WmoPWcgUqNlKxWIy2NBjtPYJZS61VRjp9A/exec";
+const STUDENT_URL = "";
+/* ▲▲▲ 설정 끝 ▲▲▲ */
+</script>
+<script>
+/* =========================================================
+   소설 맛집 — 공통 코드 (교사용·학생용이 함께 씀)
+   데이터: Google Apps Script 웹앱(API_URL)  ·  비어 있으면 이 브라우저에만 저장(체험 모드)
+   ========================================================= */
+const $=(s,el=document)=>el.querySelector(s);
+const $$=(s,el=document)=>[...el.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=(p='')=>p+Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-3);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const clone=o=>o===undefined?undefined:JSON.parse(JSON.stringify(o));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const app=$('#app');
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2800)}
+const LOCAL=!API_URL;
+
+/* ---------- 데이터 상수 ---------- */
+const LV=['하','중','상'];
+const LVI={'하':0,'중':1,'상':2};
+const TYPE={ox:'OX형',short:'단답형',mc:'선다형'};
+const CHARS=[['🐰','토끼','#FFC7D6'],['🐱','고양이','#FFD23F'],['🐶','강아지','#F2B880'],['🦊','여우','#FF9A5C'],['🐻','곰','#C79A6B'],['🐼','판다','#DDE3F5'],['🐯','호랑이','#FFB547'],['🐔','수탉','#FF8A8A']];
+const TIERS=[
+ {name:'분식 포차',c:'#FFB08A',items:[
+  ['🍢','어묵꼬치','국물까지 뜨끈'],
+  ['🥘','떡볶이','매콤달콤 쫀득'],
+  ['🍙','김밥','한 줄 순삭'],
+  ['🍜','라면','국물 한 입에 행복'],
+  ['🌭','핫도그','설탕 솔솔 케첩 지그재그'],
+  ['🍟','감자튀김','겉바속촉 황금빛'],
+  ['🥟','군만두','육즙 팡팡'],
+  ['🍳','계란빵','통계란이 쏙'],
+  ['🌭','순대','떡볶이 국물에 콕'],
+  ['🥞','호떡','꿀이 주르륵']]},
+ {name:'디저트 카페',c:'#FFB3D1',items:[
+  ['🍓','탕후루','와그작 유리 코팅'],
+  ['🥐','크루아상','버터 향 결결이'],
+  ['🍪','마카롱','쫀득 달콤 한 입'],
+  ['🧋','버블티','쫀득 타피오카'],
+  ['🍩','도넛','반짝 글레이즈'],
+  ['🧁','컵케이크','알록달록 크림'],
+  ['🍮','캐러멜 푸딩','탱글탱글'],
+  ['🥞','팬케이크','꿀 듬뿍 폭신'],
+  ['🧇','딸기 와플','바삭 와플에 딸기'],
+  ['🥖','추로스','초코 소스에 콕']]},
+ {name:'핫플 맛집',c:'#FFD36B',items:[
+  ['🍲','마라탕','얼얼 3단계 도전'],
+  ['🍗','양념치킨','바삭하고 달콤하게'],
+  ['🍔','수제버거','육즙 뚝뚝'],
+  ['🍕','피자','치즈 늘어나는 중'],
+  ['🌮','타코','바삭 토르티야'],
+  ['🍛','돈가스','겉은 바삭 속은 촉촉'],
+  ['🍝','스파게티','토마토 소스 듬뿍'],
+  ['🥗','포케','건강하게 맛있게'],
+  ['🍜','짜장면','입가에 짜장 수염'],
+  ['🍳','닭갈비','철판 위 지글지글']]},
+ {name:'셰프의 코스',c:'#8EE3CB',items:[
+  ['🥩','스테이크','미디엄 레어 완벽'],
+  ['🦞','랍스터 롤','통통한 랍스터 살'],
+  ['🍤','모둠 튀김','바삭바삭 새우튀김'],
+  ['🍱','장어구이','윤기 좌르르'],
+  ['🫕','치즈 퐁뒤','콕 찍어 쭈욱'],
+  ['🍖','바비큐 폭립','뼈에서 쏙 빠짐'],
+  ['🥣','전복죽','고소함 끝판왕'],
+  ['🥓','삼겹살','지글지글 노릇노릇'],
+  ['🍚','불고기','달콤 짭조름'],
+  ['🍣','모둠 초밥','입에서 녹는 맛']]},
+ {name:'전설의 만찬',c:'#C7B3FF',items:[
+  ['👑','왕갈비찜','왕의 밥상'],
+  ['🎂','무지개 케이크','축하 폭죽 팡팡'],
+  ['🍧','팥빙수','산처럼 높은 빙수'],
+  ['🥮','월병','달처럼 둥근 과자'],
+  ['🍯','약과','K-디저트의 정점'],
+  ['🍨','파르페','1등의 디저트'],
+  ['🍫','두바이 초콜릿','바삭 초코 한 판'],
+  ['🦆','북경오리','바삭한 껍질의 전설'],
+  ['🥢','구절판','임금님도 반한 맛'],
+  ['🍰','티라미수','먹으면 소원 성취']]}
+];
+const DEFAULT_MENU=[];
+TIERS.forEach((t,ti)=>t.items.forEach((f,i)=>DEFAULT_MENU.push({id:'t'+(ti+1)+'-'+i,e:f[0],n:f[1],d:f[2],img:'foods/t'+(ti+1)+'-'+i+'.jpg',tier:ti,qty:1})));
+const DEFAULT_MAP=Object.fromEntries(DEFAULT_MENU.map(f=>[f.id,f]));
+const SFX=['두둥!','슈욱!','쾅!','번쩍!','뚜둥!','휘릭!','찌릿!','짜잔!'];
+const SFX2=['콩닥콩닥','두근','스윽','쿵','또르르','빠밤'];
+const TRANS=['tr-flip','tr-zoom','tr-slide','tr-drop','tr-twist','tr-cube'];
+
+/* 음식 이름으로 이모지 추측 (사진을 못 불러올 때 대신 보여 줌) */
+const EMO_GUESS=[['떡볶|떡','🥘'],['김밥|주먹밥|밥','🍙'],['라면|국수|면|우동|라멘','🍜'],['짜장|짬뽕','🍜'],['피자','🍕'],['버거|햄버거','🍔'],['치킨|닭','🍗'],['케이크','🍰'],['빵|토스트|베이글','🍞'],['도넛','🍩'],['쿠키|과자','🍪'],['초콜릿|초코','🍫'],['아이스|빙수','🍧'],['사탕|젤리','🍬'],['우유|라떼|커피','☕'],['차|티','🍵'],['콜라|사이다|주스|에이드','🥤'],['초밥|스시|회','🍣'],['새우','🍤'],['고기|갈비|스테이크|삼겹','🥩'],['만두','🥟'],['샐러드','🥗'],['수박','🍉'],['딸기','🍓'],['사과','🍎'],['바나나','🍌'],['포도','🍇'],['감자','🥔'],['고구마','🍠'],['옥수수','🌽'],['계란|달걀','🍳'],['카레','🍛'],['타코','🌮'],['핫도그|소시지','🌭'],['파스타|스파게티','🍝'],['죽|수프|국|탕|찌개','🍲']];
+function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(k).test(n))return e;return '🍽️'}
+
+/* ---------- 저장소 ---------- */
+const Store=(()=>{
+  let all={},ver=0,key='',pollMs=3000,timer=null,pulling=false,online=true;
+  const listeners=new Set();
+  const notify=()=>listeners.forEach(f=>{try{f()}catch(e){console.error(e)}});
+  const merge=(a,b)=>{for(const k in b){const x=a[k],y=b[k];if(y&&typeof y==='object'&&!Array.isArray(y)&&x&&typeof x==='object'&&!Array.isArray(x))merge(x,y);else a[k]=y}return a};
+  /* ---- 체험 모드: 이 브라우저 localStorage ---- */
+  const LKEY='alssong-db-v1';
+  const lload=()=>LS.get(LKEY,{});
+  const lsave=()=>LS.set(LKEY,all);
+  if(LOCAL)window.addEventListener('storage',e=>{if(e.key===LKEY){all=lload();notify()}});
+  function applyLocal(op){
+    if(op.op==='set')all[op.path]=clone(op.data);
+    else if(op.op==='update')all[op.path]=merge(all[op.path]||{},clone(op.data));
+    else if(op.op==='delete')delete all[op.path];
+    else if(op.op==='claim'){
+      const d=all[op.path]||{taken:{}};d.taken=d.taken||{};let l=d.taken[op.food];l=Array.isArray(l)?l:(l?[l]:[]);
+      if(l.length>=op.qty)return{ok:true,claimed:false,data:d};
+      l.push(op.entry);d.taken[op.food]=l;all[op.path]=d;return{ok:true,claimed:true,data:d};
+    }
+    return{ok:true};
+  }
+  /* ---- 온라인: Apps Script ---- */
+  async function pull(){
+    if(LOCAL||pulling)return;pulling=true;
+    try{
+      const r=await (await fetch(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):''),{cache:'no-store'})).json();
+      if(!r.ok)throw new Error(r.error||'pull');
+      const ks=Object.keys(r.docs||{});
+      ks.forEach(p=>{if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
+      ver=Math.max(ver,r.ver||0);
+      if(!online){online=true;setNet(true)}
+      if(ks.length)notify();
+    }catch(e){if(online){online=false;setNet(false)}console.warn(e)}
+    finally{pulling=false}
+  }
+  function setNet(ok){const d=$('#netdot');if(d)d.hidden=ok;if(!ok)toast('서버와 연결이 불안정해요. 잠시 후 자동으로 다시 이어져요.')}
+  function loop(){clearTimeout(timer);timer=setTimeout(async()=>{await pull();loop()},document.hidden?Math.max(pollMs*4,12000):pollMs)}
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!LOCAL){pull();loop()}});
+  async function post(body){
+    if(LOCAL){const res=body.op==='batch'?{ok:true,results:body.ops.map(applyLocal)}:applyLocal(body);lsave();notify();return res}
+    // 먼저 화면에 반영(빠른 반응), 서버 결과로 다시 맞춤
+    const optimistic=o=>{if(o.op==='set')all[o.path]=clone(o.data);else if(o.op==='update')all[o.path]=merge(all[o.path]||{},clone(o.data));else if(o.op==='delete')delete all[o.path]};
+    if(body.op!=='claim'){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
+    let r;
+    for(let i=0;i<3;i++){
+      try{r=await (await fetch(API_URL,{method:'POST',body:JSON.stringify({...body,key})})).json();if(r.ok||r.error!=='busy')break}
+      catch(e){r={ok:false,error:'network'}}
+      await sleep(600+i*800);
+    }
+    if(r&&r.ok&&body.op==='claim'&&r.data)all[body.path]=r.data;
+    if(!r||!r.ok){const err=new Error((r&&r.error)||'network');err.code=(r&&r.error)||'network';pull();throw err}
+    pull();return r;
+  }
+  return{
+    async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
+    setKey(k){key=k},
+    on(fn){listeners.add(fn);return()=>listeners.delete(fn)},
+    doc(p){return clone(all[p])},
+    peek(p){return all[p]},
+    coll(prefix){const out={};const pre=prefix+'/';for(const p in all){if(p.startsWith(pre)&&p.indexOf('/',pre.length)<0)out[p.slice(pre.length)]=all[p]}return out},
+    refresh:pull,
+    set:(path,data)=>post({op:'set',path,data}),
+    update:(path,data)=>post({op:'update',path,data}),
+    del:path=>post({op:'delete',path}),
+    batch:ops=>post({op:'batch',ops}),
+    claim:(path,food,qty,entry)=>post({op:'claim',path,food,qty,entry})
+  };
+})();
+async function checkTeacherKey(k){
+  if(LOCAL)return true;
+  try{const r=await (await fetch(API_URL+'?op=auth&key='+encodeURIComponent(k),{cache:'no-store'})).json();return !!r.ok}catch(e){return null}
+}
+function dbErr(e){
+  const c=e&&e.code;
+  if(c==='teacher_only')toast('교사 비밀번호가 필요해요. 새로고침 후 다시 입력해 주세요.');
+  else if(c==='too_big')toast('내용이 너무 길어서 저장하지 못했어요. (소설 본문을 줄이거나 사진을 작게)');
+  else toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요.');
+  console.warn(e);
+}
+
+/* 공유 상태 (Store에서 매번 다시 만듦) */
+const S={novels:{},classes:{},folders:{},students:{},pantry:{},subs:{},foodimg:{},menu:null,app:{}};
+function syncS(){
+  S.novels=Store.coll('novels');S.classes=Store.coll('classes');S.folders=Store.coll('folders');S.students=Store.coll('students');
+  S.pantry=Store.coll('pantry');S.subs=Store.coll('submissions');S.foodimg=Store.coll('foodimg');
+  S.menu=Store.peek('settings/menu')||null;S.app=Store.peek('settings/app')||{};
+}
+
+/* ---------- 메뉴(음식) ---------- */
+function menuItems(){return (S.menu&&Array.isArray(S.menu.items))?S.menu.items:DEFAULT_MENU}
+function menuMap(){const m={};menuItems().forEach(f=>m[f.id]=f);return m}
+function foodOf(id,fallbackName){
+  const f=menuMap()[id]||DEFAULT_MAP[id];
+  if(f)return{...f,tier:f.tier||0};
+  return{id,n:fallbackName||'음식',e:guessEmoji(fallbackName),d:'',tier:0};
+}
+function foodSrc(f){if(!f)return '';if(f.img)return f.img;const d=S.foodimg[f.id];return d&&d.src||''}
+function fpicErr(img){const s=document.createElement('span');s.className=img.className+' femo';s.textContent=img.dataset.e||'🍽️';img.replaceWith(s)}
+function foodPic(f,cls=''){
+  const src=foodSrc(f);const e=f.e||guessEmoji(f.n);
+  return src?`<img class="fpic ${cls}" src="${esc(src)}" alt="${esc(f.n)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-e="${esc(e)}" onerror="fpicErr(this)">`
+            :`<span class="fpic femo ${cls}" role="img" aria-label="${esc(f.n)}">${esc(e)}</span>`;
+}
+/* 식탁 항목: 문자열(id) 또는 {f:id, n:이름} */
+function tableFood(t){return typeof t==='string'?foodOf(t):foodOf(t.f,t.n)}
+
+/* ---------- 공통 조각 ---------- */
+function charOf(i){return CHARS[i]||CHARS[0]}
+function avatar(i,cls=''){const c=charOf(i);return `<span class="av ${cls}" style="--c:${c[2]}" title="${esc(c[1])}">${c[0]}</span>`}
+/* 학생에게 내는 순서 (소설마다 교사가 고름)
+   level: 하→중→상, 같은 수준은 교사가 만든 순서 / levelMix: 하→중→상, 같은 수준 안에서 섞기 / all: 모든 문제 섞기
+   섞을 때는 학생마다 다르게, 같은 학생은 다시 들어와도 같은 순서 */
+const ORDER_MODES={level:'하→중→상 순서대로',levelMix:'하→중→상 + 유형(OX·단답·선다) 섞기',all:'모든 문제 무작위'};
+function seededRand(seed){let h=1779033703^seed.length;for(let i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19}
+  return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return (h>>>0)/4294967296}}
+function seededShuffle(a,rnd){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function orderedQs(novel,seed){
+  const base=(novel&&novel.questions||[]).map((q,i)=>({...q,_i:i})).sort((a,b)=>(LVI[a.level]??0)-(LVI[b.level]??0)||a._i-b._i);
+  const mode=(novel&&novel.order)||'level';
+  if(!seed||mode==='level')return base;
+  const rnd=seededRand(String(seed));
+  if(mode==='all')return seededShuffle(base,rnd);
+  return LV.flatMap(l=>seededShuffle(base.filter(q=>q.level===l),rnd)).concat(base.filter(q=>!LV.includes(q.level)));
+}
+/* 반 이름: 교사가 쓴 이름 (예전 방식 반은 "2026년 1학년 1반") */
+function legacyClassName(c){
+  if(!c||!c.grade)return '';
+  const y=+c.year||new Date(c.createdAt||Date.now()).getFullYear();
+  return `${y}년 ${c.grade}학년 ${c.cls}반`;
+}
+function className(c){
+  if(!c)return '';
+  return String(c.name||'').trim()||legacyClassName(c)||'이름 없는 반';
+}
+function scoreOf(st){let s=0,ok=0;Object.values(st.answers||{}).forEach(a=>{if(a.ok){ok++;s+=a.tries===1?10:5}});return{score:s,correct:ok}}
+function groupName(c,gid){const g=((c&&c.groups)||[]).find(x=>x.id===gid);return g?g.name:'모둠 없음'}
+function classesSorted(){return Object.entries(S.classes).map(([id,c])=>({...c,id})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
+const ROT=[-6,4,-2,7,-4,3,-7,5,-3,6];
+/* 식탁: 작은 식탁(교사 보드)은 격자, 큰 식탁은 레벨별 "코스 상차림" 줄로 */
+function tableHTML(list,{small=false,newest=-1,names=!small,max=0,emptyText='아직 빈 식탁이에요',tap=false}={}){
+  let foods=(list||[]).map((t,i)=>({...tableFood(t),_i:i}));
+  if(max&&foods.length>max)foods=foods.slice(-max);
+  const n=foods.length;
+  if(!n)return `<div class="${small?'tbl-sm':''}"><div class="tbl"><div class="tbl-empty">${esc(emptyText)}</div></div></div>`;
+  const dish=f=>`<div class="dishw${f._i===newest?' new':''}${tap?' tapme':''}" style="--r:${ROT[f._i%ROT.length]}deg" title="${esc(f.n)}"${tap?` data-sact="dish" data-i="${f._i}" role="button" tabindex="0"`:''}>${foodPic(f)}${names?`<span class="nm">${esc(f.n)}</span>`:''}</div>`;
+  if(small){
+    const cols=n<=3?3:n<=8?4:n<=15?5:6;
+    return `<div class="tbl-sm"><div class="tbl"><div class="tbl-grid" style="--cols:${cols}">${foods.map(dish).join('')}</div></div></div>`;
+  }
+  const rows=TIERS.map((t,ti)=>({t,ti,list:foods.filter(f=>(f.tier||0)===ti)})).filter(r=>r.list.length);
+  return `<div><div class="tbl course">${rows.map(r=>`<div class="crow">
+      <span class="clab" style="background:${r.t.c}">Lv.${r.ti+1} ${esc(r.t.name)} <b>${r.list.length}</b></span>
+      <div class="tbl-grid" style="--cols:4">${r.list.map(dish).join('')}</div></div>`).join('')}</div></div>`;
+}
+function modal(html,{narrow=false}={}){
+  closeModal();
+  const m=document.createElement('div');m.className='modal';m.id='modal';
+  m.innerHTML=`<div class="modal-in${narrow?' narrow':''}" role="dialog" aria-modal="true">${html}</div>`;
+  m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))closeModal()});
+  document.body.appendChild(m);return m;
+}
+function closeModal(){const m=$('#modal');if(m)m.remove()}
+function confirmBox(msg,yesLabel,onYes){
+  const m=modal(`<div class="modal-hd"><h2>확인</h2></div><p style="font-family:var(--ui);font-size:17px">${msg}</p>
+   <div class="row" style="justify-content:flex-end"><button class="btn" data-close>취소</button><button class="btn pink" id="cf-yes">${esc(yesLabel)}</button></div>`,{narrow:true});
+  $('#cf-yes',m).onclick=async()=>{closeModal();await onYes()};
+}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('복사했어요!')}catch(e){toast('복사가 막혀 있어요. 직접 선택해 복사하세요.')}}
+function confetti(){
+  const box=document.createElement('div');box.className='confetti';
+  const cols=['#FF7A3D','#FFD23F','#23C4A2','#FF5C8A','#5AA9FF','#8E6CFF'];
+  for(let i=0;i<70;i++){const p=document.createElement('i');p.style.left=Math.random()*100+'%';p.style.background=pick(cols);p.style.animationDuration=(1.6+Math.random()*1.8)+'s';p.style.animationDelay=(Math.random()*.5)+'s';p.style.borderRadius=Math.random()>.5?'50%':'3px';box.appendChild(p)}
+  document.body.appendChild(box);setTimeout(()=>box.remove(),4200);
+}
+function burst(kind,text,sub){
+  const b=document.createElement('div');b.className='burst '+kind;
+  b.innerHTML=`<div class="star"><span>${text}${sub?`<small>${sub}</small>`:''}</span></div>`;
+  document.body.appendChild(b);return sleep(900).then(()=>b.remove());
+}
+if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+/* =========================================================
+   소설 맛집 교사용
+   ========================================================= */
+const SAMPLE_NOVEL={
+ title:'동백꽃',author:'김유정',
+ text:'※ 여기에 수업에서 다룰 소설 본문(해당 부분)을 붙여 넣으세요. 아래는 예시 줄거리입니다.\n\n열일곱 살 소작인의 아들 \'나\'는 마름의 딸 점순이가 건넨 구운 감자를 무심히 거절한다. 얼굴이 빨개진 점순이는 그날부터 \'나\'의 집 수탉을 자기 집 수탉과 싸움 붙이며 괴롭힌다. \'나\'는 수탉에게 고추장을 먹여 보기도 하지만 번번이 진다. 결국 화가 난 \'나\'는 점순이네 닭을 때려 죽이고, 땅을 떼일까 겁이 나 울음을 터뜨린다. 점순이는 이르지 않겠다고 하며 \'나\'와 함께 노란 동백꽃(생강나무꽃) 속으로 쓰러지고, 어머니가 부르는 소리에 두 사람은 흩어진다.',
+ questions:[
+  {level:'하',type:'ox',q:"이 소설의 서술자 '나'는 사건에 직접 참여하는 등장인물이다.",answer:'O',scene:'🙋',explain:"'나'가 주인공이면서 이야기를 들려주는 1인칭 주인공 시점이에요."},
+  {level:'하',type:'mc',q:"점순이가 '나'에게 건넨 음식은 무엇일까?",choices:['구운 감자','찐 고구마','인절미','삶은 옥수수'],answer:0,scene:'🥔',explain:'점순이는 "느 집엔 이거 없지?"라며 감자를 내밀어요.'},
+  {level:'하',type:'short',q:"점순이가 '나'를 약 올리려고 자꾸 붙인 동물 싸움은? (세 글자)",answer:'닭싸움/닭쌈',scene:'🐓',explain:'점순이는 두 집 수탉을 싸움 붙여요.'},
+  {level:'하',type:'ox',q:"제목 속 '동백꽃'은 빨간 꽃이다.",answer:'X',scene:'🌼',explain:"작품 속 '노란 동백꽃'은 강원도에서 생강나무 꽃을 부르는 말이에요."},
+  {level:'중',type:'mc',q:"'나'가 감자를 거절하자 점순이는 어떻게 반응했을까?",choices:['얼굴이 새빨개지며 노려보았다','웃으며 다른 친구에게 주었다','어머니에게 곧장 일렀다','울면서 사과했다'],answer:0,scene:'😳',explain:'무안해진 점순이는 이때부터 \'나\'를 괴롭혀요.'},
+  {level:'중',type:'short',q:"'나'가 자기 수탉을 힘세게 하려고 억지로 먹인 것은?",answer:'고추장',scene:'🌶️',explain:"고추장을 먹인 수탉도 결국 지고 말아요."},
+  {level:'중',type:'mc',q:"'나'가 점순이에게 함부로 맞서지 못하는 가장 큰 까닭은?",choices:['점순이네가 마름이라 땅을 떼일까 봐','점순이가 나이가 훨씬 많아서','점순이 오빠가 무서워서','점순이와 이미 약혼한 사이라서'],answer:0,scene:'🌾',explain:'소작인과 마름이라는 신분 관계가 갈등을 키워요.'},
+  {level:'상',type:'mc',q:'이 소설의 사건 전개 방식으로 알맞은 것은?',choices:['현재 → 과거 회상 → 다시 현재로 돌아오는 구성','처음부터 끝까지 시간 순서대로 진행','이야기 속에 또 다른 이야기가 있는 액자식 구성','여러 인물의 이야기를 번갈아 보여 주는 구성'],answer:0,scene:'🔄',explain:'닭싸움 장면에서 시작해 감자 사건을 회상한 뒤 현재로 돌아와요(역순행적 구성).'},
+  {level:'상',type:'ox',q:"'나'는 점순이의 행동이 자신을 좋아하는 마음의 표현이라는 것을 처음부터 알아챘다.",answer:'X',scene:'🤔',explain:"눈치 없는 '나'의 순박함이 웃음(해학)을 만들어요."},
+  {level:'상',type:'short',open:true,q:"점순이의 마음을 끝까지 눈치채지 못한 '나'에게 한마디 해 준다면? (자신의 생각을 한 문장으로)",answer:'',scene:'💌',explain:'생각을 문장으로 쓰면 정답!'}
+ ]
+};
+
+const T={openCls:{},tab:LS.get('als-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('als-t-class',null),pending:false,saving:0,
+  nf:{n:'',d:'',tier:0,qty:1,cands:[],ci:0,up:'',searching:false,q:''}};
+const TABS=[['novels','📚 소설'],['classes','🏫 반·모둠'],['menu','🍱 메뉴판'],['questions','✏️ 문제'],['board','📊 활동 보드']];
+/* 학생용 주소: 교사가 저장한 주소 → 설정값 → 같은 사이트의 …/student/ 자동 */
+function autoStudentUrl(){
+  if(!/^https?:$/.test(location.protocol))return '';
+  const p=location.pathname;const i=p.lastIndexOf('/teacher/');
+  return i>=0?location.origin+p.slice(0,i)+'/student/':'';
+}
+function studentBase(){return (S.app.studentUrl||STUDENT_URL||autoStudentUrl()).trim().replace(/[#?].*$/,'').replace(/^(https?:\/\/[^\/]+)$/,'$1/')}
+
+function tRender(){
+  if(!$('#tmain')){
+    app.innerHTML=`<header class="tbar"><span class="logo sm">소설 맛집</span><span class="tag" style="background:var(--sky);color:#fff">교사용</span><span class="tag" style="background:var(--grape);color:#fff">🗝️ 방탈출형</span>
+      <nav class="tabs" id="ttabs"></nav><span class="save-dot" id="savedot">${LOCAL?'체험 모드 · 이 브라우저에만 저장':'자동 저장 · 실시간 연결'}</span><span id="netdot" class="tag" style="background:var(--pink);color:#fff" hidden>연결 끊김</span></header>
+      <main class="wrap" id="tmain"></main>`;
+  }
+  $('#ttabs').innerHTML=TABS.map(([k,l])=>`<button class="${T.tab===k?'on':''}" data-act="tab" data-k="${k}">${l}</button>`).join('');
+  const main=$('#tmain');
+  const a=document.activeElement;
+  if(a&&main.contains(a)&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.type!=='file'){T.pending=true;return}
+  T.pending=false;
+  // 작성 중인 입력값 보존
+  const keep={};$$('#tmain [data-keep]').forEach(el=>keep[el.id]=el.value);
+  const y=window.scrollY;
+  main.innerHTML=({novels:vNovels,classes:vClasses,menu:vMenu,questions:vQuestions,board:vBoard}[T.tab]||vNovels)();
+  for(const id in keep){const el=document.getElementById(id);if(el&&!el.value)el.value=keep[id]}
+  window.scrollTo(0,y);
+}
+function markSaving(p){T.saving+=p?1:-1;const d=$('#savedot');if(d)d.textContent=T.saving>0?'저장 중…':(LOCAL?'이 브라우저에 저장됨':'자동 저장됨 ✓')}
+async function tWrite(fn){markSaving(true);try{await fn()}catch(e){dbErr(e)}finally{markSaving(false)}}
+
+/* --- 소설 --- */
+function novelsSorted(){return Object.entries(S.novels).map(([id,n])=>({...n,id})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
+const BOOKC=['#FF7A3D','#23C4A2','#5AA9FF','#FF5C8A','#8E6CFF','#FFD23F'];
+function vNovels(){
+  const list=novelsSorted();
+  const ed=T.editNovel&&S.novels[T.editNovel];
+  return `<div class="grid2">
+   <div class="card stack">
+    <h2 style="font-size:26px">${ed?'소설 수정':'새 소설 추가'}</h2>
+    <label class="fld">소설 제목<input class="in" id="nv-title" ${ed?'':'data-keep'} value="${esc(ed?ed.title:'')}" placeholder="예: 동백꽃"></label>
+    <label class="fld">작가<input class="in" id="nv-author" ${ed?'':'data-keep'} value="${esc(ed?ed.author:'')}" placeholder="예: 김유정"></label>
+    <label class="fld">소설 해당 부분<textarea class="in" id="nv-text" ${ed?'':'data-keep'} rows="10" placeholder="수업에서 다룰 부분을 붙여 넣으세요.">${esc(ed?ed.text:'')}</textarea></label>
+    <div class="row">${ed?`<button class="btn mint" data-act="save-novel">수정 저장</button><button class="btn" data-act="cancel-edit">취소</button>`
+      :`<button class="btn tang" data-act="add-novel">책장에 꽂기</button>`}</div>
+    ${list.length?'':`<button class="btn ghost" data-act="seed-novel">예시 소설 「동백꽃」과 문제 10개 불러오기</button>`}
+   </div>
+   <div>
+    <div class="sec-h"><h2>나의 책장</h2><span class="muted">${list.length}권 · 책을 눌러 문제를 만들어요</span></div>
+    ${list.length?`<div class="shelf">${list.map((n,i)=>`
+      <div class="book${T.novelId===n.id?' sel':''}" style="background:${BOOKC[i%BOOKC.length]}">
+        <h3>${esc(n.title)}</h3><div class="by">${esc(n.author)}</div>
+        <div class="by">문제 ${(n.questions||[]).length}개 · 본문 ${(n.text||'').length.toLocaleString()}자</div>
+        <div class="acts"><button class="btn sm" data-act="go-q" data-id="${n.id}">문제</button><button class="btn sm" data-act="edit-novel" data-id="${n.id}">수정</button><button class="btn sm" data-act="copy-novel" data-id="${n.id}" title="문제까지 통째로 복사">복사</button><button class="btn sm" data-act="del-novel" data-id="${n.id}">삭제</button></div>
+      </div>`).join('')}</div>`:`<div class="card muted">아직 책장이 비어 있어요. 왼쪽에서 소설을 추가하세요.</div>`}
+   </div></div>`;
+}
+
+/* --- 반·모둠 --- */
+function vClasses(){
+  const list=classesSorted();const novels=novelsSorted();const base=studentBase();
+  const folders=id=>Object.entries(S.folders).filter(([,f])=>f.classId===id);
+  return `<div class="sec-h"><h2>반·모둠 관리</h2><span class="muted">① 반 이름 쓰기 → ② 소설 고르기 → ③ 배포 켜기 → ④ QR 띄우기</span>
+    <button class="btn tang" data-act="add-class">＋ 반 추가</button></div>
+   ${list.length?'':`<div class="card muted" style="margin-bottom:14px">＋ 반 추가를 눌러 반을 만들어 주세요.</div>`}
+   <div class="classes">${list.map(c=>{const link=base?base+'#s-'+c.id:'';const open=!!T.openCls[c.id];return `
+    <div class="card ccard">
+      <div class="hd"><span class="grow"></span>
+        <label class="switch${c.active?' on':''}" data-act="toggle-class" data-id="${c.id}"><i></i>${c.active?'배포 중':'배포 꺼짐'}</label></div>
+      <label class="fld">반 이름<input class="in cname" id="cn-${c.id}" data-ch="class-name" data-id="${c.id}" value="${esc(String(c.name||'').trim()||legacyClassName(c))}" maxlength="30" placeholder="예: 2026 1학년 1반, 1-1 문학A"></label>
+      <label class="fld">소설<select class="in" data-ch="class-novel" data-id="${c.id}"><option value="">소설을 골라 주세요</option>${novels.map(n=>`<option value="${n.id}" ${c.novelId===n.id?'selected':''}>${esc(n.title)} · ${esc(n.author)}</option>`).join('')}</select></label>
+      ${!novels.length?`<div class="linkbox" style="background:#FFE7A6">⚠️ 📚 소설 탭에서 소설을 먼저 추가해 주세요</div>`
+        :!c.novelId?`<div class="linkbox" style="background:#FFE7A6">⚠️ 위에서 <b>소설</b>을 골라 주세요</div>`
+        :!c.active?`<button class="btn" style="font-size:18px;padding:14px;opacity:.6" data-act="toggle-class" data-id="${c.id}">🔒 배포를 켜야 학생이 들어올 수 있어요 (눌러서 켜기)</button>`
+        :link?`<button class="btn" style="font-size:20px;padding:14px;background:linear-gradient(135deg,#FFC7D6,#C7B3FF)" data-act="qr" data-u="${esc(link)}" data-t="${esc(className(c))} 입장 (방탈출)">🚪 방탈출 입장 QR 띄우기</button>
+          <div class="row" style="gap:6px"><code class="muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(link)}</code><button class="btn sm" data-act="copy" data-t="${esc(link)}">링크 복사</button></div>`
+        :`<div class="linkbox" style="background:#FFE7A6">⚠️ 맨 아래 "학생용 주소"를 넣으면 QR 버튼이 생겨요</div>`}
+      <details class="cset" data-cls="${c.id}" ${open?'open':''}><summary>⚙ 더 보기 <span class="muted" style="font-size:13px">모둠·제출 폴더·삭제</span></summary>
+      <div class="stack" style="gap:12px;margin-top:10px">
+      <div class="fld">모둠<div class="gchips">${(c.groups||[]).map(g=>`<span class="chip">${esc(g.name)}<button data-act="del-group" data-id="${c.id}" data-g="${g.id}" aria-label="${esc(g.name)} 삭제">✕</button></span>`).join('')}</div>
+        <div class="row"><input class="in grow" id="ng-${c.id}" data-keep placeholder="모둠 이름 (예: 감자팀)"><button class="btn sm sun" data-act="add-group" data-id="${c.id}">추가</button></div></div>
+      <label class="fld">제출 폴더<select class="in" data-ch="class-folder" data-id="${c.id}"><option value="">(없음 — 활동 보드에서 만들기)</option>${folders(c.id).map(([fid,f])=>`<option value="${fid}" ${c.folderId===fid?'selected':''}>${esc(f.name)}</option>`).join('')}</select></label>
+      <div class="row"><button class="btn sm" data-act="copy-class" data-id="${c.id}">반 복사</button><button class="btn sm" data-act="reset-pantry" data-id="${c.id}">모둠 음식 다시 채우기</button><button class="btn sm" data-act="del-class" data-id="${c.id}">반 삭제</button></div>
+      </div></details>
+    </div>`}).join('')}</div>
+   <details class="card" style="margin-top:28px" ${base?'':'open'}><summary style="font-family:var(--ui);font-size:17px">📱 학생용 주소 ${base?'<span class="muted" style="font-size:13px">자동으로 맞춰져 있어요 · 바꿀 때만 여세요</span>':''}</summary>
+     <div class="stack" style="margin-top:10px">
+     <div class="row"><input class="in grow" id="stu-url" value="${esc(base)}" placeholder="예: https://아이디.github.io/alssong/student/" inputmode="url">
+       <button class="btn sun" data-act="save-url">저장</button></div>
+     <span class="muted" style="font-size:13px">깃허브에서 교사용(…/teacher/)으로 열면 학생용(…/student/) 주소가 자동으로 들어가요.</span></div>
+   </details>`;
+}
+function showQR(url,title){
+  const m=modal(`<div class="modal-hd"><h2>${esc(title)}</h2><button class="btn sm" data-close>닫기</button></div>
+    <div class="qrbox" id="qrbox"></div><p style="text-align:center;font-family:var(--ui);word-break:break-all;margin:12px 0 0">${esc(url)}</p>
+    <p class="muted" style="text-align:center;font-size:13px;margin:4px 0 0">휴대폰 카메라로 찍으면 바로 열려요. 칠판 화면에 띄워 두세요.</p>`,{narrow:true});
+  const box=$('#qrbox',m);
+  if(window.QRCode){new QRCode(box,{text:url,width:600,height:600,correctLevel:QRCode.CorrectLevel.M})}
+  else box.innerHTML=`<p class="muted">QR 도구를 불러오지 못했어요. 링크를 복사해 나눠 주세요.</p>`;
+}
+
+/* --- 메뉴판 --- */
+function saveMenu(items){
+  S.menu={items};
+  clearTimeout(saveMenu.t);
+  saveMenu.t=setTimeout(()=>tWrite(()=>Store.set('settings/menu',{items:S.menu.items,updatedAt:Date.now()})),400);
+}
+function menuMutate(fn){const items=clone(menuItems());fn(items);saveMenu(items);T.pending=false;tRender()}
+function vMenu(){
+  const items=menuItems();const nf=T.nf;
+  const perGroup=items.reduce((a,f)=>a+(+f.qty||0),0);
+  const kinds=items.filter(f=>+f.qty>0).length;
+  const cur=nf.up?{n:nf.n||'새 음식',img:nf.up,e:guessEmoji(nf.n)}:{n:nf.n||'새 음식',img:nf.cands[nf.ci]||'',e:guessEmoji(nf.n)};
+  return `<div class="sec-h"><h2>메뉴판 설정</h2><span class="muted">문제를 맞힌 학생이 고르는 음식이에요 · 개수는 <b>모둠마다</b> 준비되는 양이에요</span></div>
+   <div class="stats" style="margin-bottom:18px">
+     <div class="stat"><b>${kinds}</b><span>음식 종류</span></div>
+     <div class="stat"><b>${perGroup}</b><span>모둠당 음식 수</span></div>
+     <div class="stat"><b>${items.length-kinds}</b><span>숨긴 음식 (개수 0)</span></div>
+   </div>
+   <div class="card" style="margin-bottom:18px">
+     <h2 style="font-size:22px;margin-bottom:12px">＋ 음식 추가하기</h2>
+     <div class="addfood">
+       <div class="pv">${cur.img||nf.n?foodPic(cur,nf.searching?'wait':''):`<span class="fpic femo">🍽️</span>`}
+         ${nf.cands.length>1&&!nf.up?`<div class="cands">${nf.cands.slice(0,6).map((u,i)=>`<button class="${i===nf.ci?'on':''}" data-act="nf-cand" data-i="${i}" aria-label="${i+1}번 사진">${foodPic({n:'',img:u,e:'·'})}</button>`).join('')}</div>`:''}
+         <span class="muted" style="font-size:12px;text-align:center">${nf.searching?'사진 찾는 중…':nf.up?'직접 올린 사진':nf.cands.length?'사진을 눌러 바꿀 수 있어요':nf.q?'사진을 못 찾았어요. 직접 올려 주세요':'이름을 입력하면 사진이 자동으로 들어가요'}</span>
+       </div>
+       <div class="stack">
+         <div class="row"><label class="fld grow">음식 이름<input class="in" id="nf-n" value="${esc(nf.n)}" placeholder="예: 비빔밥, 붕어빵, 마라샹궈" autocomplete="off"></label>
+           <label class="fld" style="width:120px">개수(모둠당)<input class="in" id="nf-qty" type="number" min="1" max="30" value="${esc(nf.qty)}"></label></div>
+         <label class="fld">한 줄 설명 (선택)<input class="in" id="nf-d" value="${esc(nf.d)}" placeholder="예: 고소한 참기름 향"></label>
+         <label class="fld">단계 (문제를 풀수록 높은 단계가 나와요)<select class="in" id="nf-tier">${TIERS.map((t,i)=>`<option value="${i}" ${+nf.tier===i?'selected':''}>Lv.${i+1} ${t.name}</option>`).join('')}</select></label>
+         <div class="row">
+           <button class="btn sky" data-act="nf-search">🔍 사진 다시 찾기</button>
+           <label class="btn"><input type="file" accept="image/*" id="nf-file" hidden>📷 내 사진 올리기</label>
+           <span class="grow"></span>
+           <button class="btn tang" data-act="nf-add">메뉴판에 추가</button>
+         </div>
+       </div>
+     </div>
+   </div>
+   <div class="row" style="margin-bottom:6px">
+     <span style="font-family:var(--ui)">모든 음식 개수를</span>
+     <select class="in" id="bulk-qty" style="width:auto">${[0,1,2,3,4,5].map(v=>`<option value="${v}" ${v===1?'selected':''}>${v}개</option>`).join('')}</select>
+     <button class="btn sm sun" data-act="bulk-qty">한꺼번에 바꾸기</button>
+     <span class="grow"></span>
+     <button class="btn sm" data-act="menu-reset">기본 메뉴로 되돌리기</button>
+   </div>
+   ${TIERS.map((t,ti)=>{const list=items.filter(f=>(f.tier||0)===ti);return `
+     <div class="tier-h"><span class="tag" style="background:${t.c};font-size:16px">Lv.${ti+1}</span><h3>${esc(t.name)}</h3>
+       <span class="muted" style="font-size:13px">${list.filter(f=>+f.qty>0).length}종류 · ${list.reduce((a,f)=>a+(+f.qty||0),0)}개</span></div>
+     <div class="menu-grid">${list.map(f=>`<div class="mfood${+f.qty>0?'':' off'}">
+        <button class="ph" data-act="m-photo" data-id="${f.id}" title="사진 바꾸기" aria-label="${esc(f.n)} 사진 바꾸기">📷</button>
+        <button class="x" data-act="m-del" data-id="${f.id}" title="삭제" aria-label="${esc(f.n)} 삭제">✕</button>
+        ${foodPic(f)}
+        <input class="in" data-ch="m-name" data-id="${f.id}" value="${esc(f.n)}" aria-label="음식 이름">
+        <div class="qty"><button data-act="m-qty" data-id="${f.id}" data-d="-1" aria-label="하나 빼기">−</button><b>${+f.qty||0}</b><button data-act="m-qty" data-id="${f.id}" data-d="1" aria-label="하나 더하기">＋</button></div>
+        <select class="in" data-ch="m-tier" data-id="${f.id}" style="font-size:13px;padding:3px 6px" aria-label="단계">${TIERS.map((x,i)=>`<option value="${i}" ${i===ti?'selected':''}>Lv.${i+1}</option>`).join('')}</select>
+      </div>`).join('')||'<p class="muted">이 단계에는 음식이 없어요. (없으면 가까운 단계 음식이 나와요)</p>'}</div>`}).join('')}
+   <input type="file" accept="image/*" id="m-file" hidden>`;
+}
+/* 위키백과·위키미디어에서 음식 사진 찾기 */
+async function findFoodPhotos(name){
+  const out=[];const add=u=>{if(!u)return;u=u.replace(/\?.*$/,'');if(/\.(svg|gif|tiff?|pdf|webm|ogv)$/i.test(u))return;if(!out.includes(u))out.push(u)};
+  const api=(host,params)=>fetch(`https://${host}/w/api.php?format=json&origin=*&${params}`).then(r=>r.json()).catch(()=>null);
+  const q=encodeURIComponent(name);
+  const byIndex=r=>Object.values((r&&r.query&&r.query.pages)||{}).sort((a,b)=>(a.index||0)-(b.index||0));
+  const [ko,cm]=await Promise.all([
+    api('ko.wikipedia.org',`action=query&generator=search&gsrsearch=${q}&gsrlimit=6&prop=pageimages&piprop=thumbnail&pithumbsize=500`),
+    api('commons.wikimedia.org',`action=query&generator=search&gsrnamespace=6&gsrsearch=${q}&gsrlimit=10&prop=imageinfo&iiprop=url|mime&iiurlwidth=500`)
+  ]);
+  byIndex(ko).forEach(p=>p.thumbnail&&add(p.thumbnail.source));
+  byIndex(cm).forEach(p=>{const ii=(p.imageinfo||[])[0];if(ii&&/jpeg|png|webp/.test(ii.mime||''))add(ii.thumburl||ii.url)});
+  return out;
+}
+let nfSeq=0;
+async function nfSearch(){
+  const nf=T.nf;const name=nf.n.trim();if(!name){nf.cands=[];nf.ci=0;nf.q='';tRender();return}
+  const my=++nfSeq;nf.searching=true;nf.q=name;nf.up='';refreshNfPreview();
+  const urls=await findFoodPhotos(name);
+  if(my!==nfSeq)return;
+  nf.searching=false;nf.cands=urls;nf.ci=0;refreshNfPreview();
+}
+function refreshNfPreview(){
+  // 입력 중에도 미리보기만 바꿔 끼움
+  const pv=$('.addfood .pv');if(!pv)return;
+  const tmp=document.createElement('div');tmp.innerHTML=vMenu();
+  const np=$('.addfood .pv',tmp);if(np)pv.replaceWith(np);
+}
+/* 저장 칸(5만 자) 안에 들어가도록 화질을 낮춰 가며 JPEG로 */
+function fitJpeg(cv){
+  let d='';for(const q of [.8,.68,.55,.42]){d=cv.toDataURL('image/jpeg',q);if(d.length<40000)return d}
+  const s=document.createElement('canvas');s.width=s.height=200;s.getContext('2d').drawImage(cv,0,0,200,200);return s.toDataURL('image/jpeg',.6);
+}
+function resizeImage(file,max=320){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();fr.onerror=rej;
+    fr.onload=()=>{const img=new Image();img.onerror=rej;img.onload=()=>{
+      const s=Math.min(1,max/Math.max(img.width,img.height));const cv=document.createElement('canvas');
+      // 가운데를 정사각형으로 잘라 음식이 꽉 차게
+      const side=Math.min(img.width,img.height);const out=Math.min(max,side);cv.width=out;cv.height=out;
+      cv.getContext('2d').drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,out,out);
+      res(fitJpeg(cv));void s};img.src=fr.result};
+    fr.readAsDataURL(file);
+  });
+}
+/* 인터넷 사진을 작게 잘라 저장용 데이터로 바꿈 (수업 중 외부 사이트가 막혀도 보이도록) */
+function urlToData(url,max=320){
+  return new Promise(res=>{
+    const img=new Image();img.crossOrigin='anonymous';img.referrerPolicy='no-referrer';
+    const done=v=>{clearTimeout(to);res(v)};const to=setTimeout(()=>res(''),12000);
+    img.onerror=()=>done('');
+    img.onload=()=>{try{const side=Math.min(img.width,img.height);const out=Math.min(max,side);const cv=document.createElement('canvas');cv.width=out;cv.height=out;
+      cv.getContext('2d').drawImage(img,(img.width-side)/2,(img.height-side)/2,side,side,0,0,out,out);done(fitJpeg(cv))}catch(e){done('')}};
+    img.src=url;
+  });
+}
+/* 음식 사진 저장: 가능하면 데이터로 저장, 안 되면 주소만 */
+async function storeFoodPhoto(id,url){
+  const data=await urlToData(url);
+  if(data){await tWrite(()=>Store.set('foodimg/'+id,{src:data}));return ''}
+  return url;
+}
+
+/* --- 문제 --- */
+function vQuestions(){
+  const list=novelsSorted();
+  if(!list.length)return `<div class="card">먼저 📚 소설 탭에서 소설을 추가하세요.</div>`;
+  if(!T.novelId||!S.novels[T.novelId])T.novelId=list[0].id;
+  const n=S.novels[T.novelId];const qs=n.questions||[];
+  // 목록은 늘 하→중→상으로 묶어서 보여 줌 (같은 수준 안은 교사가 정한 순서)
+  const disp=orderedQs(n);let lastLv=null;
+  const rows=disp.map((q,pos)=>{
+    const head=q.level!==lastLv?`<div class="lvhead"><span class="tag lv-${q.level}">${q.level}수준</span><span class="muted" style="font-family:var(--ui);font-size:14px">${disp.filter(x=>x.level===q.level).length}문제</span></div>`:'';lastLv=q.level;
+    return head+qRow(q,q._i,pos,disp);
+  }).join('');
+  return `<div class="sec-h"><h2>문제 만들기</h2>
+     <select class="in" style="width:auto" data-ch="q-novel">${list.map(x=>`<option value="${x.id}" ${x.id===T.novelId?'selected':''}>${esc(x.title)} · ${esc(x.author)}</option>`).join('')}</select>
+     <span class="muted">${qs.length}문제</span></div>
+   <div class="card row" style="margin-bottom:14px;padding:12px 14px;gap:8px 12px">
+     <label class="row" style="gap:8px;font-family:var(--ui)">🔀 학생에게 내는 순서
+       <select class="in" data-ch="q-order" style="width:auto">${Object.entries(ORDER_MODES).map(([k,l])=>`<option value="${k}" ${(n.order||'level')===k?'selected':''}>${l}</option>`).join('')}</select></label>
+     <span class="muted" style="font-size:13px">${(n.order||'level')==='level'?'아래 목록 순서 그대로 (하→중→상)':(n.order==='all'?'학생마다 모든 문제 순서가 달라요':'하→중→상은 지키고, 같은 수준 안에서 학생마다 순서가 달라요')}</span>
+   </div>
+   <div class="qlist">${rows||'<div class="card muted">문제가 없어요. ＋ 문제 추가를 눌러 주세요.</div>'}</div>
+   ${qs.length?`<div class="row" style="justify-content:center;margin-top:18px"><button class="btn tang" style="font-size:18px;padding:12px 26px" data-act="add-q">＋ 여기에 문제 추가 (Q${qs.length+1})</button></div>`:''}
+   <button class="btn tang fab" data-act="add-q" aria-label="문제 추가">＋ 문제</button>`;
+}
+function qRow(q,i,pos,disp){
+  const prev=disp[pos-1],next=disp[pos+1];
+  const up=prev&&prev.level===q.level?prev._i:-1,down=next&&next.level===q.level?next._i:-1;
+  const ans=q.type==='ox'?`<div class="row oxpick"><span class="muted">정답</span><div class="seg"><button class="${q.answer==='O'?'on':''}" data-act="q-set" data-i="${i}" data-f="answer" data-v="O">O</button><button class="${q.answer==='X'?'on':''}" data-act="q-set" data-i="${i}" data-f="answer" data-v="X">X</button></div></div>`
+   :q.type==='mc'?`<div class="stack" style="gap:6px">${[0,1,2,3].map(k=>`<label class="mcopt"><input type="radio" name="mc-${i}" ${Number(q.answer)===k?'checked':''} data-ch="q-mcans" data-i="${i}" data-k="${k}" aria-label="${k+1}번을 정답으로"><input class="in" data-ch="q-choice" data-i="${i}" data-k="${k}" value="${esc((q.choices||[])[k]||'')}" placeholder="${k+1}번 보기"></label>`).join('')}<span class="muted" style="font-size:13px">동그라미를 눌러 정답 보기를 고르세요.</span></div>`
+   :`<div class="stack" style="gap:6px"><label class="switch${q.open?' on':''}" data-act="q-open" data-i="${i}"><i></i>자신의 생각 쓰기 (문장을 쓰면 정답)</label>
+      ${q.open?'':`<input class="in" data-ch="q-field" data-i="${i}" data-f="answer" value="${esc(q.answer||'')}" placeholder="정답 (여러 개면 / 로 구분: 닭싸움/닭쌈)">`}</div>`;
+  return `<div class="qrow" data-qid="${esc(q.id||'')}">
+    <div class="qnum lv-${q.level}">Q${pos+1}</div>
+    <div>
+      <div class="qtools">
+        <div class="seg" role="group" aria-label="문제 유형">${['ox','short','mc'].map(t=>`<button class="${q.type===t?'on':''}" data-act="q-set" data-i="${i}" data-f="type" data-v="${t}">${TYPE[t]}</button>`).join('')}</div>
+        <div class="seg" role="group" aria-label="수준">${LV.map(l=>`<button class="${q.level===l?'on':''}" data-act="q-set" data-i="${i}" data-f="level" data-v="${l}">${l}</button>`).join('')}</div>
+        <input class="in scene" data-ch="q-field" data-i="${i}" data-f="scene" value="${esc(q.scene||'')}" title="장면 그림 (이모지 1개)" aria-label="장면 그림 이모지">
+        <span class="grow"></span>
+        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${up}" ${up<0?'disabled':''} aria-label="같은 수준에서 위로">▲</button>
+        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${down}" ${down<0?'disabled':''} aria-label="같은 수준에서 아래로">▼</button>
+        <button class="btn sm" data-act="q-del" data-i="${i}" data-n="${pos+1}">삭제</button>
+      </div>
+      <div class="stack" style="gap:8px">
+        <textarea class="in" rows="2" data-ch="q-field" data-i="${i}" data-f="q" placeholder="문제를 입력하세요">${esc(q.q)}</textarea>
+        ${ans}
+        <input class="in" data-ch="q-field" data-i="${i}" data-f="explain" value="${esc(q.explain||'')}" placeholder="해설 (틀렸을 때 보여 줘요 · 선택)">
+      </div>
+    </div></div>`;
+}
+let qSaveT=null;
+function qMutate(fn,rerender=true){
+  const n=S.novels[T.novelId];if(!n)return;
+  const qs=clone(n.questions||[]);fn(qs);n.questions=qs;
+  if(rerender){T.pending=false;const b=document.activeElement;if(b&&b.blur)b.blur();tRender()}
+  clearTimeout(qSaveT);const id=T.novelId;
+  qSaveT=setTimeout(()=>tWrite(()=>Store.update('novels/'+id,{questions:S.novels[id].questions})),600);
+}
+function newQ(level='하'){return{id:uid('q'),level,type:'mc',q:'',choices:['','','',''],answer:0,scene:'',explain:''}}
+
+/* --- 활동 보드 --- */
+/* 지금 이 반에 걸린 소설의 기록만 (소설을 바꾸면 새로 시작, 예전 기록은 제출 폴더에 남음) */
+function classStudents(cid){const nv=(S.classes[cid]||{}).novelId;return Object.entries(S.students).map(([k,s])=>({...s,key:k})).filter(s=>s.classId===cid&&s.novelId===nv)}
+function pantryKey(c,gid){return c.id+'-'+c.novelId+'-'+gid}
+/* 등위: 점수 → 정답 수 → 그 점수에 먼저 도달한 학생 순. 공동 순위 없이 1, 2, 3… */
+function reachedAt(s){const t=Object.values(s.answers||{}).filter(a=>a&&a.ok&&a.at).map(a=>a.at);return t.length?Math.max(...t):(s.updatedAt||0)}
+function ranked(list){return list.map(s=>({...s,...scoreOf(s),_at:reachedAt(s)}))
+  .sort((a,b)=>b.score-a.score||b.correct-a.correct||a._at-b._at||String(a.key).localeCompare(String(b.key)))
+  .map((s,i)=>({...s,rank:i+1}))}
+function takenCount(p){return Object.values((p&&p.taken)||{}).reduce((a,l)=>a+(Array.isArray(l)?l.length:(l?1:0)),0)}
+function vBoard(){
+  const cls=classesSorted();
+  if(!cls.length)return `<div class="card">먼저 🏫 반·모둠 탭에서 반을 만들어 주세요.</div>`;
+  if(!T.classId||!S.classes[T.classId])T.classId=cls[0].id;
+  const c={...S.classes[T.classId],id:T.classId};const novel=S.novels[c.novelId];const total=orderedQs(novel).length;
+  const studs=ranked(classStudents(c.id));
+  const done=studs.filter(s=>s.done).length;const avg=studs.length?Math.round(studs.reduce((a,s)=>a+s.score,0)/studs.length):0;
+  const top=[studs[1],studs[0],studs[2]];
+  const perGroup=menuItems().reduce((a,f)=>a+(+f.qty||0),0);
+  const folders=Object.entries(S.folders).map(([id,f])=>({...f,id})).filter(f=>f.classId===c.id).sort((a,b)=>a.createdAt-b.createdAt);
+  return `<div class="sec-h"><h2>활동 보드</h2><div class="pills">${cls.map(x=>`<button class="pill${x.id===c.id?' on':''}" data-act="board-class" data-id="${x.id}">${esc(className(x))}${x.active?' ●':''}</button>`).join('')}</div></div>
+  <div class="stats" style="margin-bottom:20px">
+    <div class="stat"><b>${studs.length}</b><span>참여 학생</span></div>
+    <div class="stat"><b>${done}</b><span>끝까지 푼 학생</span></div>
+    <div class="stat"><b>${avg}</b><span>평균 점수</span></div>
+    <div class="stat"><b>${total}</b><span>문제 수 · ${esc(novel?novel.title:'소설 미선택')}</span></div>
+  </div>
+  <div class="board">
+    <div class="stack">
+      <div class="card"><h2 style="font-size:22px">🏆 우리 반 TOP 3</h2><p class="muted" style="font-size:13px;margin:4px 0 0">점수가 같으면 그 점수에 먼저 도달한 학생이 앞 순위예요</p>
+        ${studs.length?`<div class="podium">${top.map((s,i)=>{const p=[2,1,3][i];return s?`<div class="pod p${p}">${avatar(s.character,p===1?'lg':'')}<div class="nm">${esc(s.name)}<div class="sc">${esc(groupName(c,s.group))} · ${s.score}점</div></div><div class="blk">${s.rank}</div></div>`:`<div></div>`}).join('')}</div>`:'<p class="muted">아직 참여한 학생이 없어요.</p>'}
+      </div>
+      <div class="card stack"><h2 style="font-size:22px">🔎 등위 검색</h2>
+        <div class="srch"><input class="in" type="number" min="1" id="rank-q" placeholder="등위"><button class="btn sun" data-act="rank-search">찾기</button></div>
+        <div id="rank-out" class="muted">숫자를 넣고 찾기를 누르세요.</div>
+      </div>
+    </div>
+    <div>
+      <div class="sec-h"><h2 style="font-size:22px">모둠별 진행</h2><span class="muted">모둠을 누르면 학생별 식탁을 볼 수 있어요</span></div>
+      <div class="groups">${(c.groups||[]).map(g=>{
+        const mem=studs.filter(s=>s.group===g.id);const prog=mem.length&&total?Math.round(mem.reduce((a,s)=>a+Object.keys(s.answers||{}).length,0)/(mem.length*total)*100):0;
+        const taken=takenCount(S.pantry[pantryKey(c,g.id)]);
+        const foods=mem.flatMap(s=>s.table||[]);
+        return `<button class="card gcard" data-act="open-group" data-g="${g.id}">
+          <div class="row"><h3>${esc(g.name)}</h3><span class="grow"></span><span class="tag">${mem.length}명</span></div>
+          <div class="avs">${mem.map(s=>avatar(s.character,'xs')).join('')||'<span class="muted">아직 없음</span>'}</div>
+          <div class="bar" aria-label="진행률 ${prog}%"><i style="width:${prog}%"></i></div>
+          <div class="row muted" style="font-size:13px"><span>진행 ${prog}%</span><span class="grow"></span><span>남은 음식 ${Math.max(0,perGroup-taken)}/${perGroup}</span></div>
+          ${tableHTML(foods,{small:true,max:15,emptyText:'아직 빈 식탁'})}
+        </button>`}).join('')||'<div class="card muted">모둠이 없어요. 반·모둠 탭에서 추가하세요.</div>'}</div>
+    </div>
+  </div>
+  <div class="sec-h" style="margin-top:34px"><h2>제출 폴더</h2><span class="muted">"제출 폴더로 지정"한 폴더로 학생들이 식탁과 점수를 제출해요</span></div>
+  <div class="row" style="margin-bottom:6px"><input class="in" style="max-width:280px" id="nf-name" data-keep placeholder="폴더 이름 (예: 1차시 동백꽃)"><button class="btn tang" data-act="add-folder">＋ 폴더 만들기</button></div>
+  <div class="folders">${folders.map(f=>{const subs=Object.values(S.subs).filter(x=>x.folderId===f.id);const act=c.folderId===f.id;
+    return `<div class="folder${act?' act':''}"><h3>📁 ${esc(f.name)}</h3><div class="muted" style="font-size:13px">${subs.length}명 제출${act?' · 지금 제출 받는 중':''}</div>
+      <div class="row"><button class="btn sm" data-act="open-folder" data-id="${f.id}">열기</button>${act?'':`<button class="btn sm mint" data-act="use-folder" data-id="${f.id}">제출 폴더로 지정</button>`}
+      <button class="btn sm" data-act="dl-folder" data-id="${f.id}">다운로드</button><button class="btn sm" data-act="del-folder" data-id="${f.id}">삭제</button></div></div>`}).join('')||'<p class="muted">아직 폴더가 없어요.</p>'}</div>`;
+}
+function studentCard(s,total){
+  const qs=orderedQs(S.novels[s.novelId],s.key);
+  const dots=qs.map(q=>{const a=(s.answers||{})[q.id];return `<i class="${a?(a.ok?(a.tries===1?'ok':'ok2'):'no'):''}">${a?(a.ok?'✓':'✕'):''}</i>`}).join('');
+  const sc=scoreOf(s);const answered=Object.keys(s.answers||{}).length;
+  return `<div class="card stack" style="gap:8px">
+    <div class="row">${avatar(s.character)}<div><b style="font-family:var(--ui);font-size:17px">${esc(s.name)}</b><div class="muted" style="font-size:13px">${esc(s.num)}번 · ${s.done?'완료':'푸는 중'}${s.submittedAt?' · 제출함':''}</div></div><span class="grow"></span><span style="font-family:var(--display);font-size:26px">${sc.score}점</span></div>
+    <div class="bar"><i style="width:${total?Math.round(answered/total*100):0}%"></i></div>
+    <div class="dots" title="초록: 한 번에 정답, 연두: 두 번째 정답, 분홍: 패스">${dots}</div>
+    ${tableHTML(s.table||[],{small:true})}
+    <div class="muted" style="font-size:13px">${(s.table||[]).map(t=>tableFood(t).n).join(', ')||'차린 음식 없음'}</div>
+  </div>`;
+}
+function openGroup(gid){
+  const c=S.classes[T.classId];const total=orderedQs(S.novels[c.novelId]).length;
+  const mem=ranked(classStudents(T.classId).filter(s=>s.group===gid));
+  modal(`<div class="modal-hd"><h2>${esc(groupName(c,gid))} · ${esc(className(c))}</h2><button class="btn sm" data-close>닫기</button></div>
+    <div class="mstud">${mem.map(s=>studentCard(s,total)).join('')||'<p class="muted">아직 이 모둠에 들어온 학생이 없어요.</p>'}</div>`);
+}
+function folderSubs(fid){return Object.entries(S.subs).map(([k,v])=>({...v,key:k})).filter(x=>x.folderId===fid)}
+function openFolder(fid){
+  const f=S.folders[fid];if(!f)return;const c=S.classes[f.classId]||{groups:[]};
+  const subs=folderSubs(fid);
+  const byG={};subs.forEach(s=>{(byG[s.group]=byG[s.group]||[]).push(s)});
+  const gids=[...(c.groups||[]).map(g=>g.id),...Object.keys(byG).filter(g=>!(c.groups||[]).some(x=>x.id===g))];
+  modal(`<div class="modal-hd"><h2>📁 ${esc(f.name)}</h2><button class="btn sm" data-act="dl-folder" data-id="${fid}">다운로드(CSV)</button><button class="btn sm" data-close>닫기</button></div>
+   ${subs.length?gids.filter(g=>byG[g]).map(g=>`<h3 style="font-size:22px;margin:10px 0">${esc(groupName(c,g))} <span class="tag">${byG[g].length}명</span></h3>
+     <div class="subgrid">${byG[g].sort((a,b)=>b.score-a.score).map(s=>`<div class="card stack" style="gap:6px;padding:12px">
+       <div class="row">${avatar(s.character,'xs')}<b style="font-family:var(--ui)">${esc(s.name)}</b><span class="grow"></span><b style="font-family:var(--display);font-size:20px;font-weight:400">${s.score}점</b></div>
+       <div class="muted" style="font-size:12px">${esc(s.num)}번 · 정답 ${s.correct}/${s.total} · ${new Date(s.submittedAt).toLocaleString('ko-KR')}</div>
+       ${tableHTML(s.table||[],{small:true})}</div>`).join('')}</div>`).join(''):'<p class="muted">아직 제출한 학생이 없어요.</p>'}`);
+}
+function downloadFolder(fid){
+  const f=S.folders[fid];if(!f)return;const c=S.classes[f.classId]||{groups:[]};
+  const subs=folderSubs(fid).sort((a,b)=>String(a.group).localeCompare(String(b.group))||b.score-a.score);
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const lines=[['반','모둠','번호','이름','점수','정답 수','문항 수','식탁 메뉴','제출 시각'].map(q).join(',')];
+  subs.forEach(s=>lines.push([className(c),groupName(c,s.group),s.num,s.name,s.score,s.correct,s.total,(s.table||[]).map(t=>tableFood(t).n).join(' / '),new Date(s.submittedAt).toLocaleString('ko-KR')].map(q).join(',')));
+  const data='﻿'+lines.join('\r\n');const filename=`소설맛집_${className(c)}_${f.name}.csv`.replace(/[\\/:*?"<>|]/g,'_');
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=filename;document.body.appendChild(a);a.click();a.remove()}catch(e){toast('다운로드하지 못했어요.')}
+}
+
+/* --- 교사 이벤트 --- */
+const TA={
+  tab(b){T.tab=b.dataset.k;LS.set('als-t-tab',T.tab);T.pending=false;tRender()},
+  async 'add-novel'(){const title=$('#nv-title').value.trim(),author=$('#nv-author').value.trim(),text=$('#nv-text').value;
+    if(!title){toast('소설 제목을 입력하세요.');return}
+    const id=uid('n');$('#nv-title').value='';$('#nv-author').value='';$('#nv-text').value='';document.activeElement.blur&&document.activeElement.blur();
+    await tWrite(()=>Store.set('novels/'+id,{title,author,text,questions:[],createdAt:Date.now()}));
+    T.novelId=id;toast(`「${title}」을(를) 책장에 꽂았어요.`)},
+  async 'seed-novel'(){const id=uid('n');const n=clone(SAMPLE_NOVEL);n.questions.forEach(q=>q.id=uid('q'));n.createdAt=Date.now();await tWrite(()=>Store.set('novels/'+id,n));T.novelId=id},
+  'edit-novel'(b){T.editNovel=b.dataset.id;T.pending=false;tRender();window.scrollTo(0,0)},
+  'cancel-edit'(){T.editNovel=null;tRender()},
+  async 'save-novel'(){const id=T.editNovel;const title=$('#nv-title').value.trim();if(!title){toast('소설 제목을 입력하세요.');return}
+    const data={title,author:$('#nv-author').value.trim(),text:$('#nv-text').value};T.editNovel=null;document.activeElement.blur&&document.activeElement.blur();
+    await tWrite(()=>Store.update('novels/'+id,data));tRender();toast('저장했어요.')},
+  'del-novel'(b){const n=S.novels[b.dataset.id];confirmBox(`「${esc(n.title)}」과 문제 ${(n.questions||[]).length}개를 삭제할까요?`,'삭제',()=>tWrite(()=>Store.del('novels/'+b.dataset.id)))},
+  'go-q'(b){T.novelId=b.dataset.id;T.tab='questions';LS.set('als-t-tab',T.tab);tRender()},
+  'save-url'(){let u=$('#stu-url').value.trim();if(u&&!/^https?:\/\//.test(u))u='https://'+u;document.activeElement.blur&&document.activeElement.blur();
+    tWrite(()=>Store.update('settings/app',{studentUrl:u}));toast('학생용 주소를 저장했어요.')},
+  qr(b){showQR(b.dataset.u,b.dataset.t)},
+  async 'add-class'(){
+    const id=uid('c');
+    await tWrite(()=>Store.set('classes/'+id,{name:'',groups:[1,2,3,4,5].map(i=>({id:'g'+i,name:i+'모둠'})),novelId:'',active:false,folderId:'',createdAt:Date.now()}));
+    // 새 반의 이름 칸에 바로 커서
+    setTimeout(()=>{const el=$('#cn-'+id);if(el){el.scrollIntoView({block:'center'});el.focus()}},80)},
+  'toggle-class'(b){const c=S.classes[b.dataset.id];tWrite(()=>Store.update('classes/'+b.dataset.id,{active:!c.active}))},
+  'add-group'(b){const inp=$('#ng-'+b.dataset.id);const name=inp.value.trim();if(!name){toast('모둠 이름을 입력하세요.');return}
+    const c=S.classes[b.dataset.id];const groups=[...(c.groups||[]),{id:uid('g'),name}];inp.value='';inp.blur();tWrite(()=>Store.update('classes/'+b.dataset.id,{groups}))},
+  'del-group'(b){const c=S.classes[b.dataset.id];const g=(c.groups||[]).find(x=>x.id===b.dataset.g);
+    confirmBox(`'${esc(g.name)}' 모둠을 삭제할까요? 이 모둠 학생 기록은 남아 있어요.`,'삭제',()=>tWrite(()=>Store.update('classes/'+b.dataset.id,{groups:c.groups.filter(x=>x.id!==b.dataset.g)})))},
+  /* 반 복사: 모둠·소설 설정을 그대로 본뜬 새 반 (학생 기록·제출 폴더는 새로) */
+  async 'copy-class'(b){const c=S.classes[b.dataset.id];if(!c)return;const id=uid('c');
+    const a=document.activeElement;if(a&&a.blur)a.blur();T.pending=false;
+    await tWrite(()=>Store.set('classes/'+id,{name:className(c)+' 복사본',groups:clone(c.groups||[]),novelId:c.novelId||'',active:false,folderId:'',createdAt:Date.now()}));
+    toast('반을 복사했어요. 반 이름을 바꿔 주세요.');
+    setTimeout(()=>{const el=$('#cn-'+id);if(el){el.scrollIntoView({block:'center'});el.focus();el.select()}},120)},
+  /* 소설 복사: 본문·문제·순서 설정까지 (복사본을 고쳐도 원본은 그대로) */
+  async 'copy-novel'(b){const n=S.novels[b.dataset.id];if(!n)return;const id=uid('n');
+    const copy={title:n.title+' (복사본)',author:n.author||'',text:n.text||'',order:n.order||'level',questions:clone(n.questions||[]).map(q=>({...q,id:uid('q')})),createdAt:Date.now()};
+    await tWrite(()=>Store.set('novels/'+id,copy));T.novelId=id;toast(`「${n.title}」을(를) 문제 ${copy.questions.length}개와 함께 복사했어요.`)},
+  'del-class'(b){const c=S.classes[b.dataset.id];confirmBox(`${esc(className(c))}을(를) 삭제할까요? 학생 기록과 폴더는 남아 있어요.`,'삭제',()=>tWrite(()=>Store.del('classes/'+b.dataset.id)))},
+  'reset-pantry'(b){const c=S.classes[b.dataset.id];confirmBox(`${esc(className(c))} 모든 모둠의 음식을 메뉴판 개수대로 다시 채울까요? (학생 식탁은 그대로예요)`,'다시 채우기',async()=>{
+    await tWrite(()=>Store.batch((c.groups||[]).map(g=>({op:'set',path:'pantry/'+pantryKey({...c,id:b.dataset.id},g.id),data:{taken:{}}}))));toast('음식을 다시 채웠어요.')})},
+  copy(b){copyText(b.dataset.t)},
+  /* 메뉴판 */
+  'nf-search'(){T.nf.n=($('#nf-n')||{}).value||T.nf.n;nfSearch()},
+  'nf-cand'(b){T.nf.ci=+b.dataset.i;refreshNfPreview()},
+  async 'nf-add'(){
+    const nf=T.nf;nf.n=$('#nf-n').value.trim();nf.d=$('#nf-d').value.trim();nf.qty=Math.max(1,Math.min(30,parseInt($('#nf-qty').value,10)||1));nf.tier=+$('#nf-tier').value;
+    if(!nf.n){toast('음식 이름을 입력하세요.');$('#nf-n').focus();return}
+    if(!nf.up&&!nf.cands.length&&nf.q!==nf.n){toast('사진을 찾는 중이에요…');await nfSearch()}
+    const id=uid('m');const item={id,n:nf.n,d:nf.d,e:guessEmoji(nf.n),tier:nf.tier,qty:nf.qty,img:''};
+    const addBtn=$('[data-act="nf-add"]');if(addBtn){addBtn.disabled=true;addBtn.textContent='사진 저장 중…'}
+    if(nf.up)await tWrite(()=>Store.set('foodimg/'+id,{src:nf.up}));
+    else if(nf.cands[nf.ci])item.img=await storeFoodPhoto(id,nf.cands[nf.ci]);
+    menuMutate(items=>items.push(item));
+    T.nf={n:'',d:'',tier:nf.tier,qty:nf.qty,cands:[],ci:0,up:'',searching:false,q:''};tRender();
+    toast(`「${item.n}」을(를) 메뉴판에 추가했어요!`)},
+  'm-qty'(b){menuMutate(items=>{const f=items.find(x=>x.id===b.dataset.id);if(f)f.qty=Math.max(0,Math.min(30,(+f.qty||0)+(+b.dataset.d)))})},
+  'm-del'(b){const f=menuItems().find(x=>x.id===b.dataset.id);if(!f)return;
+    confirmBox(`「${esc(f.n)}」을(를) 메뉴판에서 뺄까요? (이미 식탁에 차린 학생 음식은 그대로예요)`,'빼기',()=>{menuMutate(items=>{const i=items.findIndex(x=>x.id===f.id);if(i>=0)items.splice(i,1)});if(S.foodimg[f.id])tWrite(()=>Store.del('foodimg/'+f.id))})},
+  'm-photo'(b){
+    const f=menuItems().find(x=>x.id===b.dataset.id);if(!f)return;
+    const m=modal(`<div class="modal-hd"><h2>「${esc(f.n)}」 사진 바꾸기</h2><button class="btn sm" data-close>닫기</button></div>
+      <div class="stack"><div class="row"><input class="in grow" id="mp-q" value="${esc(f.n)}" placeholder="찾을 이름"><button class="btn sky" id="mp-go">🔍 찾기</button><label class="btn"><input type="file" accept="image/*" id="mp-file" hidden>📷 내 사진</label></div>
+      <div class="menu-grid" id="mp-list"><p class="muted">사진을 찾는 중…</p></div></div>`);
+    const run=async()=>{const list=$('#mp-list',m);list.innerHTML='<p class="muted">사진을 찾는 중…</p>';const urls=await findFoodPhotos($('#mp-q',m).value.trim()||f.n);
+      list.innerHTML=urls.length?urls.map(u=>`<button class="mfood" data-u="${esc(u)}" style="cursor:pointer">${foodPic({n:f.n,img:u,e:f.e})}</button>`).join(''):'<p class="muted">사진을 못 찾았어요. 다른 이름으로 찾거나 직접 올려 주세요.</p>'};
+    $('#mp-go',m).onclick=run;$('#mp-q',m).onkeydown=e=>{if(e.key==='Enter')run()};
+    $('#mp-list',m).onclick=async e=>{const x=e.target.closest('[data-u]');if(!x)return;const u=x.dataset.u;
+      $('#mp-list',m).innerHTML='<p class="muted">사진 저장 중…</p>';
+      const img=await storeFoodPhoto(f.id,u);closeModal();
+      if(img&&S.foodimg[f.id])tWrite(()=>Store.del('foodimg/'+f.id));
+      menuMutate(items=>{const it=items.find(y=>y.id===f.id);if(it)it.img=img});toast('사진을 바꿨어요.')};
+    $('#mp-file',m).onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const src=await resizeImage(file);closeModal();
+      await tWrite(()=>Store.set('foodimg/'+f.id,{src}));menuMutate(items=>{const it=items.find(y=>y.id===f.id);if(it)it.img=''});toast('사진을 올렸어요.')}catch(err){toast('사진을 읽지 못했어요.')}};
+    run();
+  },
+  'bulk-qty'(){const v=+$('#bulk-qty').value;confirmBox(`모든 음식의 개수를 모둠당 ${v}개로 바꿀까요?`,'바꾸기',()=>menuMutate(items=>items.forEach(f=>f.qty=v)))},
+  'menu-reset'(){confirmBox('메뉴판을 기본 음식 50가지(각 1개)로 되돌릴까요? 추가한 음식은 사라져요.','되돌리기',()=>menuMutate(items=>items.splice(0,items.length,...clone(DEFAULT_MENU))))},
+  /* 문제 */
+  // 새 문제는 목록 맨 끝 수준(가장 어려운 수준)으로 → 늘 맨 아래에 생김
+  'add-q'(){const disp=orderedQs(S.novels[T.novelId]);const q=newQ(disp.length?disp[disp.length-1].level:'하');qMutate(a=>a.push(q));
+    setTimeout(()=>{const row=document.querySelector(`.qrow[data-qid="${q.id}"]`);if(row){row.scrollIntoView({block:'center',behavior:'smooth'});const t=row.querySelector('textarea');t&&t.focus({preventScroll:true})}},50)},
+  'sort-q'(){qMutate(a=>{const s=a.map((q,i)=>({q,i})).sort((x,y)=>LVI[x.q.level]-LVI[y.q.level]||x.i-y.i).map(x=>x.q);a.splice(0,a.length,...s)});toast('하→중→상 순서로 정렬했어요.')},
+  'q-set'(b){const i=+b.dataset.i,f=b.dataset.f,v=b.dataset.v;qMutate(a=>{const q=a[i];q[f]=v;
+    if(f==='type'){if(v==='mc'){q.choices=q.choices&&q.choices.length?q.choices:['','','',''];q.answer=0}else if(v==='ox'){q.answer='O'}else{q.answer='';q.open=false}}})},
+  'q-open'(b){const i=+b.dataset.i;qMutate(a=>{a[i].open=!a[i].open})},
+  'q-move'(b){const i=+b.dataset.i,j=+b.dataset.j;qMutate(a=>{if(j<0||j>=a.length||!a[i])return;[a[i],a[j]]=[a[j],a[i]]})},
+  'q-del'(b){const i=+b.dataset.i;confirmBox(`Q${b.dataset.n||i+1} 문제를 삭제할까요?`,'삭제',()=>qMutate(a=>a.splice(i,1)))},
+  /* 보드 */
+  'board-class'(b){T.classId=b.dataset.id;LS.set('als-t-class',T.classId);tRender()},
+  'open-group'(b){openGroup(b.dataset.g)},
+  'rank-search'(){const r=+$('#rank-q').value;const out=$('#rank-out');const list=ranked(classStudents(T.classId));const hit=list.filter(s=>s.rank===r);const c=S.classes[T.classId];
+    out.innerHTML=hit.length?hit.map(s=>`<div class="srow">${avatar(s.character,'xs')}<span><b style="font-family:var(--ui)">${r}위 ${esc(s.name)}</b> <span class="muted">${esc(s.num)}번 · ${esc(groupName(c,s.group))}</span></span><b>${s.score}점</b></div>`).join(''):`${r||'?'}위 학생이 없어요. (참여 ${list.length}명)`},
+  async 'add-folder'(){const name=$('#nf-name').value.trim();if(!name){toast('폴더 이름을 입력하세요.');return}
+    const id=uid('f');$('#nf-name').value='';document.activeElement.blur&&document.activeElement.blur();
+    await tWrite(()=>Store.set('folders/'+id,{name,classId:T.classId,createdAt:Date.now()}));
+    if(!S.classes[T.classId].folderId)await tWrite(()=>Store.update('classes/'+T.classId,{folderId:id}));toast(`📁 ${name} 폴더를 만들었어요.`)},
+  'use-folder'(b){tWrite(()=>Store.update('classes/'+T.classId,{folderId:b.dataset.id}));toast('이제 학생들이 이 폴더로 제출해요.')},
+  'open-folder'(b){openFolder(b.dataset.id)},
+  'dl-folder'(b){downloadFolder(b.dataset.id)},
+  'del-folder'(b){const f=S.folders[b.dataset.id];const subs=folderSubs(b.dataset.id);
+    confirmBox(`📁 ${esc(f.name)} 폴더와 제출물 ${subs.length}개를 삭제할까요? 되돌릴 수 없어요. 필요하면 먼저 다운로드하세요.`,'삭제',async()=>{
+      const ops=subs.map(s=>({op:'delete',path:'submissions/'+s.key}));ops.push({op:'delete',path:'folders/'+b.dataset.id});
+      const c=S.classes[f.classId];if(c&&c.folderId===b.dataset.id)ops.push({op:'update',path:'classes/'+f.classId,data:{folderId:''}});
+      await tWrite(()=>Store.batch(ops));toast('폴더를 삭제했어요.')})}
+};
+function tChange(e){
+  const el=e.target;const k=el.dataset.ch;
+  if(el.id==='nf-file'){const file=el.files[0];if(!file)return;resizeImage(file).then(src=>{T.nf.up=src;T.nf.n=$('#nf-n').value.trim()||T.nf.n;refreshNfPreview()}).catch(()=>toast('사진을 읽지 못했어요.'));return}
+  if(el.id==='nf-d'){T.nf.d=el.value;return}
+  if(el.id==='nf-qty'){T.nf.qty=el.value;return}
+  if(el.id==='nf-tier'){T.nf.tier=+el.value;return}
+  if(!k)return;const id=el.dataset.id;
+  if(k==='class-name'){saveClassName(el,true);return}
+  else if(k==='class-novel'){const prev=(S.classes[id]||{}).novelId;tWrite(()=>Store.update('classes/'+id,{novelId:el.value}));
+    if(el.value&&prev)toast('새 소설로 바꿨어요. 학생들은 같은 QR로 들어와 새로 시작해요. (이전 소설로 되돌리면 그 기록이 다시 보여요)')}
+  else if(k==='class-folder')tWrite(()=>Store.update('classes/'+id,{folderId:el.value}));
+  else if(k==='q-novel'){T.novelId=el.value;el.blur();tRender()}
+  else if(k==='q-order'){const id=T.novelId,v=el.value;el.blur();S.novels[id].order=v;T.pending=false;tRender();
+    tWrite(()=>Store.update('novels/'+id,{order:v}));toast('학생에게 내는 순서: '+ORDER_MODES[v])}
+  else if(k==='q-field'){const i=+el.dataset.i;qMutate(a=>{a[i][el.dataset.f]=el.value},false)}
+  else if(k==='q-choice'){const i=+el.dataset.i,kk=+el.dataset.k;qMutate(a=>{a[i].choices=a[i].choices||['','','',''];a[i].choices[kk]=el.value},false)}
+  else if(k==='q-mcans'){const i=+el.dataset.i;qMutate(a=>{a[i].answer=+el.dataset.k},false)}
+  else if(k==='m-name'){const v=el.value.trim();if(v)menuMutate(items=>{const f=items.find(x=>x.id===id);if(f)f.n=v})}
+  else if(k==='m-tier'){menuMutate(items=>{const f=items.find(x=>x.id===id);if(f)f.tier=+el.value})}
+}
+let nfT=null;
+/* 반 이름: 쓰는 대로 조금 뒤 자동 저장 (한글 입력 중 Enter/포커스 이동에도 안전). 빈칸이면 저장하지 않음 */
+const cnT={};
+function saveClassName(el,final){
+  const id=el.dataset.id;const v=el.value.trim().slice(0,30);clearTimeout(cnT[id]);
+  const cur=String((S.classes[id]||{}).name||'').trim();
+  if(!v){if(final){toast('반 이름을 써 주세요. 비워 두면 저장되지 않아요.');el.value=cur||legacyClassName(S.classes[id])}return}
+  if(v===cur)return;
+  const go=()=>tWrite(()=>Store.update('classes/'+id,{name:v}));
+  if(final)go();else cnT[id]=setTimeout(go,800);
+}
+function tInput(e){
+  const el=e.target;
+  if(el.dataset.ch==='class-name'){if(!e.isComposing)saveClassName(el,false);return}
+  if(el.id==='nf-n'){T.nf.n=el.value;T.nf.up='';clearTimeout(nfT);nfT=setTimeout(nfSearch,650);return}
+  if(el.dataset.ch==='q-field'||el.dataset.ch==='q-choice')tChange(e);
+}
+
+/* --- 시작 (비밀번호) --- */
+function keyGate(msg=''){
+  app.innerHTML=`<div class="home"><div class="home-in">
+    <div class="spool">🍽️</div><div class="logo">소설 맛집</div><span class="tag" style="background:var(--sky);color:#fff;font-size:16px">교사용 · 🗝️ 방탈출형</span>
+    <form class="card stack" id="kform" style="width:min(380px,100%);text-align:left">
+      <label class="fld">교사 비밀번호<input class="in" id="tkey" type="password" autocomplete="current-password" required></label>
+      ${msg?`<p style="color:var(--pink-d);margin:0;font-family:var(--ui)">${esc(msg)}</p>`:''}
+      <button class="btn tang" style="font-size:18px">들어가기</button>
+      <p class="muted" style="font-size:13px;margin:0">Apps Script 코드 맨 위 TEACHER_KEY 에 적은 비밀번호예요.</p>
+    </form></div></div>`;
+  $('#tkey').focus();
+  $('#kform').onsubmit=async e=>{e.preventDefault();const k=$('#tkey').value;const ok=await checkTeacherKey(k);
+    if(ok===null)return keyGate('서버에 연결하지 못했어요. API_URL과 인터넷을 확인해 주세요.');
+    if(!ok)return keyGate('비밀번호가 맞지 않아요.');
+    LS.set('als-t-key',k);startTeacher(k)};
+}
+let tStarted=false;
+async function startTeacher(key){
+  app.innerHTML=`<div class="home"><div class="home-in"><div class="spool">🍽️</div><div class="logo">소설 맛집</div><p class="muted" style="font-family:var(--ui)">불러오는 중…</p></div></div>`;
+  await Store.init({poll:2500,teacherKey:key});
+  syncS();tRender();
+  if(tStarted)return;tStarted=true;
+  Store.on(()=>{syncS();tRender()});
+  app.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||!app.contains(b))return;e.preventDefault();TA[b.dataset.act]&&TA[b.dataset.act](b,e)});
+  document.body.addEventListener('click',e=>{const b=e.target.closest('#modal [data-act]');if(b){TA[b.dataset.act]&&TA[b.dataset.act](b,e)}});
+  app.addEventListener('change',tChange);
+  app.addEventListener('input',tInput);
+  app.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.cls)T.openCls[d.dataset.cls]=d.open},true);
+  app.addEventListener('keydown',e=>{if(e.target.id==='nf-n'&&e.key==='Enter'){e.preventDefault();TA['nf-add']()}
+    else if(e.target.dataset.ch==='class-name'&&e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();e.target.blur()}});
+  app.addEventListener('focusout',e=>{if(e.target.dataset&&e.target.dataset.ch==='class-name')saveClassName(e.target,true)});
+  app.addEventListener('compositionend',e=>{if(e.target.dataset&&e.target.dataset.ch==='class-name')saveClassName(e.target,false)});
+  app.addEventListener('focusout',()=>setTimeout(()=>{if(T.pending)tRender()},150));
+}
+(async function boot(){
+  if(LOCAL)return startTeacher('');
+  const k=LS.get('als-t-key','');
+  if(k){const ok=await checkTeacherKey(k);if(ok!==false)return startTeacher(k)}
+  keyGate();
+})();
+
+</script>
+</body>
+</html>
