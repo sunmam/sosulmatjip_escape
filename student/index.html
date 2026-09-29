@@ -438,6 +438,7 @@ textarea.in{resize:vertical}
 /* 문제 탭: 늘 보이는 ＋ 문제 버튼 */
 .fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;font-size:18px;padding:12px 20px;border-radius:999px;box-shadow:4px 5px 0 var(--ink)}
 .qlist{padding-bottom:10px}
+.arc-row{padding:8px 10px;border:2px dashed rgba(28,26,59,.25);border-radius:12px;background:#F7F5FC;gap:6px 10px}
 
 /* ================= 소설 방탈출 ================= */
 body{background-color:#F3EEFF}
@@ -655,6 +656,21 @@ body{background-color:#F3EEFF}
 @media (max-width:380px){.er-emo{font-size:54px}.dm em{font-size:9.5px}.dm{max-width:54px}}
 /* 방 안의 글씨·상자·캐릭터가 문제·식탁 창 위로 올라오지 않게 (방 안에서만 겹침 순서) */
 .er-box{isolation:isolate}
+
+/* ===== 문 아래 이름이 잘리지 않게: 문을 낮게, 글씨와 간격 ===== */
+.dm{gap:6px}
+.dm i{height:31px;width:31px;border-radius:12px 12px 4px 4px;font-size:14px;box-shadow:0 2px 0 var(--ink)}
+.dm.lock i{font-size:12px}
+.dm em{line-height:1.35;padding-top:1px}
+.dm-path{margin-bottom:30px}
+.er-corridor{gap:8px;padding:10px 0 4px}
+.cd{gap:7px}
+.cd:nth-child(n){transform:none}
+.cd-door,.cd:nth-child(n) .cd-door{max-width:50px;aspect-ratio:.8;box-shadow:0 3px 0 var(--ink)}
+.cd:nth-child(5) .cd-door{box-shadow:0 3px 0 var(--ink),0 0 14px 4px rgba(142,108,255,.5)}
+.cd b{font-size:11.5px;line-height:1.35;word-break:keep-all}
+/* 입장 화면의 소설 제목 */
+.sub-title{display:inline-block;font-family:var(--display);font-size:21px;line-height:1.3;color:var(--ink);margin-bottom:2px}
 
 </style>
 </head>
@@ -987,7 +1003,9 @@ function sideTable(){
 }
 
 function sLogin(){
-  const cls=classesSorted().filter(c=>c.active||c.id===ST.lockClass);
+  // 반 QR로 왔는데 그 반이 보관·삭제됐으면 다른 반으로 들어가지 않게
+  const lockGone=ST.lockClass&&(!S.classes[ST.lockClass]||S.classes[ST.lockClass].archived);
+  const cls=lockGone?[]:classesSorted().filter(c=>!c.archived&&(c.active||c.id===ST.lockClass));
   if(ST.lockClass&&S.classes[ST.lockClass])ST.classId=ST.lockClass;
   if(ST.classId&&!cls.some(c=>c.id===ST.classId))ST.classId=null;
   if(!ST.classId&&cls.length===1)ST.classId=cls[0].id;
@@ -996,7 +1014,7 @@ function sLogin(){
   const keep=id=>{const el=$('#'+id);return el?el.value:null};
   const num=keep('s-num')??(saved.classId===ST.classId?saved.num||'':'');const name=keep('s-name')??(saved.classId===ST.classId?saved.name||'':'');
   app.innerHTML=`<div class="sapp"><div class="stack" style="gap:18px;padding-top:10px">
-    <div style="text-align:center"><div class="spool">${UI.emo}</div><div class="logo">${UI.logo}</div><p style="font-family:var(--ui);font-size:17px;margin:12px 0 0">${UI.sub}</p></div>
+    <div style="text-align:center"><div class="spool">${UI.emo}</div><div class="logo">${UI.logo}</div><p style="font-family:var(--ui);font-size:17px;margin:12px 0 0">${typeof UI.sub==="function"?UI.sub(c?S.novels[c.novelId]:null):UI.sub}</p></div>
     ${cls.length?`<div class="card stack">
       <label class="fld">우리 반<select class="in" id="s-class" ${ST.lockClass&&S.classes[ST.lockClass]?'disabled':''}><option value="">선택하세요</option>${cls.map(x=>`<option value="${x.id}" ${x.id===ST.classId?'selected':''}>${esc(className(x))}</option>`).join('')}</select></label>
       ${c?`<div class="fld">모둠<div class="gpick">${(c.groups||[]).map(g=>`<button class="${ST.group===g.id?'on':''}" data-sact="group" data-g="${g.id}">${esc(g.name)}</button>`).join('')}</div></div>`:''}
@@ -1268,7 +1286,7 @@ async function startStudent(lock){
    - 한 화면: 캐릭터를 손(탭·끌기)이나 방향키로 움직여 방 바닥의 열쇠구멍 상자에 닿으면 문제,
      방의 열쇠구멍을 모두 열면 문이 열리고, 문까지 걸어가면 다음 방으로
    ========================================================= */
-Object.assign(UI,{logo:'소설 맛집',emo:'🗝️',sub:'소설 속 5개의 방에 갇혔다.<br>문제를 풀고 탈출하자!!<br><b>먹방의 주인공은 너!</b> 🍽️',next:'방으로 돌아가기 ▶',endTitle:'🏆 대탈출 성공!'});
+Object.assign(UI,{logo:'소설 맛집',emo:'🗝️',sub:nv=>`${nv&&nv.title?'<span class="sub-title">「'+esc(nv.title)+'」</span><br>':'소설 '}속 5개의 방에 갇혔다.<br>문제를 풀고 탈출하자!!<br><b>먹방의 주인공은 너!</b> 🍽️`,next:'방으로 돌아가기 ▶',endTitle:'🏆 대탈출 성공!'});
 
 const ROOMS=[
   {w1:'#FFC2A3',w2:'#FF9E73',fl:'#FFE3CC',fl2:'#FFD0AA',door:'#F26B3A',deco:['🏮','🍢','🥢','🏮']},

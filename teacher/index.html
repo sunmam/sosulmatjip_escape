@@ -438,6 +438,7 @@ textarea.in{resize:vertical}
 /* 문제 탭: 늘 보이는 ＋ 문제 버튼 */
 .fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;font-size:18px;padding:12px 20px;border-radius:999px;box-shadow:4px 5px 0 var(--ink)}
 .qlist{padding-bottom:10px}
+.arc-row{padding:8px 10px;border:2px dashed rgba(28,26,59,.25);border-radius:12px;background:#F7F5FC;gap:6px 10px}
 
 </style>
 </head>
@@ -746,7 +747,7 @@ const SAMPLE_NOVEL={
  ]
 };
 
-const T={openCls:{},tab:LS.get('alsE-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('alsE-t-class',null),pending:false,saving:0,
+const T={openCls:{},openArc:false,tab:LS.get('alsE-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('alsE-t-class',null),pending:false,saving:0,
   nf:{n:'',d:'',tier:0,qty:1,cands:[],ci:0,up:'',searching:false,q:''}};
 const TABS=[['novels','📚 소설'],['classes','🏫 반·모둠'],['menu','🍱 메뉴판'],['questions','✏️ 문제'],['board','📊 활동 보드']];
 /* 학생용 주소: 교사가 저장한 주소 → 설정값 → 같은 사이트의 …/student/ 자동 */
@@ -806,8 +807,23 @@ function vNovels(){
 }
 
 /* --- 반·모둠 --- */
+/* 보관함: 보관한 반은 반·모둠 목록과 학생 화면에서 숨고, 활동 보드에서 기록을 계속 볼 수 있음 */
+function liveClasses(){return classesSorted().filter(c=>!c.archived)}
+function archivedClasses(){return classesSorted().filter(c=>c.archived).sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0))}
+function classRecordCount(cid){return Object.values(S.students).filter(s=>s.classId===cid).length}
+function vArchive(){
+  const arc=archivedClasses();if(!arc.length)return '';
+  return `<details class="card" style="margin-top:28px" ${T.openArc?'open':''} data-arc><summary style="font-family:var(--ui);font-size:17px">📦 보관함 <span class="tag">${arc.length}개</span> <span class="muted" style="font-size:13px">학생 화면에는 안 보여요 · 기록은 📊 활동 보드에서 볼 수 있어요</span></summary>
+    <div class="stack" style="gap:10px;margin-top:12px">${arc.map(c=>`<div class="row arc-row">
+      <b style="font-family:var(--ui);font-size:16px">📦 ${esc(className(c))}</b>
+      <span class="muted" style="font-size:13px">${esc((S.novels[c.novelId]||{}).title||'소설 없음')} · 학생 기록 ${classRecordCount(c.id)}명${c.archivedAt?' · '+new Date(c.archivedAt).toLocaleDateString('ko-KR')+' 보관':''}</span>
+      <span class="grow"></span>
+      <button class="btn sm" data-act="arc-board" data-id="${c.id}">📊 기록 보기</button>
+      <button class="btn sm mint" data-act="unarchive-class" data-id="${c.id}">↩ 복원</button>
+      <button class="btn sm" data-act="purge-class" data-id="${c.id}">🗑 완전 삭제</button></div>`).join('')}</div></details>`;
+}
 function vClasses(){
-  const list=classesSorted();const novels=novelsSorted();const base=studentBase();
+  const list=liveClasses();const novels=novelsSorted();const base=studentBase();
   const folders=id=>Object.entries(S.folders).filter(([,f])=>f.classId===id);
   return `<div class="sec-h"><h2>반·모둠 관리</h2><span class="muted">① 반 이름 쓰기 → ② 소설 고르기 → ③ 배포 켜기 → ④ QR 띄우기</span>
     <button class="btn tang" data-act="add-class">＋ 반 추가</button></div>
@@ -824,14 +840,15 @@ function vClasses(){
         :link?`<button class="btn" style="font-size:20px;padding:14px;background:linear-gradient(135deg,#FFC7D6,#C7B3FF)" data-act="qr" data-u="${esc(link)}" data-t="${esc(className(c))} 입장 (방탈출)">🚪 방탈출 입장 QR 띄우기</button>
           <div class="row" style="gap:6px"><code class="muted" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(link)}</code><button class="btn sm" data-act="copy" data-t="${esc(link)}">링크 복사</button></div>`
         :`<div class="linkbox" style="background:#FFE7A6">⚠️ 맨 아래 "학생용 주소"를 넣으면 QR 버튼이 생겨요</div>`}
-      <details class="cset" data-cls="${c.id}" ${open?'open':''}><summary>⚙ 더 보기 <span class="muted" style="font-size:13px">모둠·제출 폴더·삭제</span></summary>
+      <details class="cset" data-cls="${c.id}" ${open?'open':''}><summary>⚙ 더 보기 <span class="muted" style="font-size:13px">모둠·제출 폴더·보관</span></summary>
       <div class="stack" style="gap:12px;margin-top:10px">
       <div class="fld">모둠<div class="gchips">${(c.groups||[]).map(g=>`<span class="chip">${esc(g.name)}<button data-act="del-group" data-id="${c.id}" data-g="${g.id}" aria-label="${esc(g.name)} 삭제">✕</button></span>`).join('')}</div>
         <div class="row"><input class="in grow" id="ng-${c.id}" data-keep placeholder="모둠 이름 (예: 감자팀)"><button class="btn sm sun" data-act="add-group" data-id="${c.id}">추가</button></div></div>
       <label class="fld">제출 폴더<select class="in" data-ch="class-folder" data-id="${c.id}"><option value="">(없음 — 활동 보드에서 만들기)</option>${folders(c.id).map(([fid,f])=>`<option value="${fid}" ${c.folderId===fid?'selected':''}>${esc(f.name)}</option>`).join('')}</select></label>
-      <div class="row"><button class="btn sm" data-act="copy-class" data-id="${c.id}">반 복사</button><button class="btn sm" data-act="reset-pantry" data-id="${c.id}">모둠 음식 다시 채우기</button><button class="btn sm" data-act="del-class" data-id="${c.id}">반 삭제</button></div>
+      <div class="row"><button class="btn sm" data-act="copy-class" data-id="${c.id}">반 복사</button><button class="btn sm" data-act="reset-pantry" data-id="${c.id}">모둠 음식 다시 채우기</button><button class="btn sm" data-act="archive-class" data-id="${c.id}">📦 보관하기</button></div>
       </div></details>
     </div>`}).join('')}</div>
+   ${vArchive()}
    <details class="card" style="margin-top:28px" ${base?'':'open'}><summary style="font-family:var(--ui);font-size:17px">📱 학생용 주소 ${base?'<span class="muted" style="font-size:13px">자동으로 맞춰져 있어요 · 바꿀 때만 여세요</span>':''}</summary>
      <div class="stack" style="margin-top:10px">
      <div class="row"><input class="in grow" id="stu-url" value="${esc(base)}" placeholder="예: https://아이디.github.io/alssong/student/" inputmode="url">
@@ -1043,14 +1060,18 @@ function takenCount(p){return Object.values((p&&p.taken)||{}).reduce((a,l)=>a+(A
 function vBoard(){
   const cls=classesSorted();
   if(!cls.length)return `<div class="card">먼저 🏫 반·모둠 탭에서 반을 만들어 주세요.</div>`;
-  if(!T.classId||!S.classes[T.classId])T.classId=cls[0].id;
-  const c={...S.classes[T.classId],id:T.classId};const novel=S.novels[c.novelId];const total=orderedQs(novel).length;
+  const live=cls.filter(x=>!x.archived),arc=cls.filter(x=>x.archived);
+  if(!T.classId||!S.classes[T.classId])T.classId=(live[0]||cls[0]).id;
+  const c={...S.classes[T.classId],id:T.classId};
+  const pill=x=>`<button class="pill${x.id===c.id?' on':''}" data-act="board-class" data-id="${x.id}">${x.archived?'📦 ':''}${esc(className(x))}${x.active?' ●':''}</button>`;const novel=S.novels[c.novelId];const total=orderedQs(novel).length;
   const studs=ranked(classStudents(c.id));
   const done=studs.filter(s=>s.done).length;const avg=studs.length?Math.round(studs.reduce((a,s)=>a+s.score,0)/studs.length):0;
   const top=[studs[1],studs[0],studs[2]];
   const perGroup=menuItems().reduce((a,f)=>a+(+f.qty||0),0);
   const folders=Object.entries(S.folders).map(([id,f])=>({...f,id})).filter(f=>f.classId===c.id).sort((a,b)=>a.createdAt-b.createdAt);
-  return `<div class="sec-h"><h2>활동 보드</h2><div class="pills">${cls.map(x=>`<button class="pill${x.id===c.id?' on':''}" data-act="board-class" data-id="${x.id}">${esc(className(x))}${x.active?' ●':''}</button>`).join('')}</div></div>
+  return `<div class="sec-h"><h2>활동 보드</h2><div class="pills">${live.map(pill).join('')}</div></div>
+  ${arc.length?`<div class="row arc-pills" style="margin:-4px 0 16px"><span class="muted" style="font-family:var(--ui);font-size:14px">📦 보관함</span><div class="pills">${arc.map(pill).join('')}</div></div>`:''}
+  ${c.archived?`<div class="linkbox" style="background:#EDEAF7;margin-bottom:16px">📦 보관한 반이에요. 학생 화면에는 보이지 않고, 여기서 기록과 제출 폴더를 볼 수 있어요.<span class="grow"></span><button class="btn sm mint" data-act="unarchive-class" data-id="${c.id}">↩ 복원</button></div>`:''}
   <div class="stats" style="margin-bottom:20px">
     <div class="stat"><b>${studs.length}</b><span>참여 학생</span></div>
     <div class="stat"><b>${done}</b><span>끝까지 푼 학생</span></div>
@@ -1171,7 +1192,22 @@ const TA={
   async 'copy-novel'(b){const n=S.novels[b.dataset.id];if(!n)return;const id=uid('n');
     const copy={title:n.title+' (복사본)',author:n.author||'',text:n.text||'',order:n.order||'level',questions:clone(n.questions||[]).map(q=>({...q,id:uid('q')})),createdAt:Date.now()};
     await tWrite(()=>Store.set('novels/'+id,copy));T.novelId=id;toast(`「${n.title}」을(를) 문제 ${copy.questions.length}개와 함께 복사했어요.`)},
-  'del-class'(b){const c=S.classes[b.dataset.id];confirmBox(`${esc(className(c))}을(를) 삭제할까요? 학생 기록과 폴더는 남아 있어요.`,'삭제',()=>tWrite(()=>Store.del('classes/'+b.dataset.id)))},
+  'del-class'(b){TA['archive-class'](b)},
+  /* 보관함 */
+  'archive-class'(b){const id=b.dataset.id,c=S.classes[id];if(!c)return;
+    confirmBox(`<b>${esc(className(c))}</b>을(를) 보관함으로 옮길까요?<br><br>· 반·모둠 목록과 학생 화면에서 사라져요 (배포도 꺼져요)<br>· 학생 기록·제출 폴더는 그대로 남고, 📊 활동 보드의 <b>📦 보관함</b>에서 볼 수 있어요<br>· 언제든 <b>복원</b>할 수 있어요`,'📦 보관하기',
+      async()=>{await tWrite(()=>Store.update('classes/'+id,{archived:true,archivedAt:Date.now(),active:false}));T.openArc=true;toast('📦 보관함으로 옮겼어요. 반·모둠 탭 맨 아래에서 볼 수 있어요.')})},
+  'unarchive-class'(b){const id=b.dataset.id,c=S.classes[id];if(!c)return;
+    tWrite(()=>Store.update('classes/'+id,{archived:false,archivedAt:0}));toast(`↩ ${className(c)}을(를) 복원했어요. 배포는 꺼져 있으니 필요하면 켜 주세요.`)},
+  'arc-board'(b){T.classId=b.dataset.id;LS.set('alsE-t-class',T.classId);T.tab='board';LS.set('alsE-t-tab',T.tab);T.pending=false;tRender();window.scrollTo(0,0)},
+  'purge-class'(b){const id=b.dataset.id,c=S.classes[id];if(!c)return;
+    const studs=Object.keys(S.students).filter(k=>S.students[k].classId===id);
+    const fids=Object.keys(S.folders).filter(k=>S.folders[k].classId===id);
+    const subs=Object.keys(S.subs).filter(k=>S.subs[k].classId===id||fids.includes(S.subs[k].folderId));
+    const pans=Object.keys(S.pantry).filter(k=>k.startsWith(id+'-'));
+    confirmBox(`<b>${esc(className(c))}</b>을(를) <b>완전히 삭제</b>할까요?<br><br>학생 기록 ${studs.length}명 · 제출 폴더 ${fids.length}개 · 제출물 ${subs.length}개가 함께 지워지고 <b>되돌릴 수 없어요.</b><br>필요하면 먼저 📊 기록 보기 → 제출 폴더 <b>다운로드</b>로 받아 두세요.`,'🗑 완전 삭제',
+      async()=>{const ops=[...studs.map(k=>'students/'+k),...subs.map(k=>'submissions/'+k),...fids.map(k=>'folders/'+k),...pans.map(k=>'pantry/'+k),'classes/'+id].map(path=>({op:'delete',path}));
+        if(T.classId===id)T.classId=null;await tWrite(()=>Store.batch(ops));toast('🗑 완전히 삭제했어요.')})},
   'reset-pantry'(b){const c=S.classes[b.dataset.id];confirmBox(`${esc(className(c))} 모든 모둠의 음식을 메뉴판 개수대로 다시 채울까요? (학생 식탁은 그대로예요)`,'다시 채우기',async()=>{
     await tWrite(()=>Store.batch((c.groups||[]).map(g=>({op:'set',path:'pantry/'+pantryKey({...c,id:b.dataset.id},g.id),data:{taken:{}}}))));toast('음식을 다시 채웠어요.')})},
   copy(b){copyText(b.dataset.t)},
@@ -1304,7 +1340,7 @@ async function startTeacher(key){
   document.body.addEventListener('click',e=>{const b=e.target.closest('#modal [data-act]');if(b){TA[b.dataset.act]&&TA[b.dataset.act](b,e)}});
   app.addEventListener('change',tChange);
   app.addEventListener('input',tInput);
-  app.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.cls)T.openCls[d.dataset.cls]=d.open},true);
+  app.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.cls)T.openCls[d.dataset.cls]=d.open;if(d.dataset&&'arc' in d.dataset)T.openArc=d.open},true);
   app.addEventListener('keydown',e=>{if(e.target.id==='nf-n'&&e.key==='Enter'){e.preventDefault();TA['nf-add']()}
     else if(e.target.dataset.ch==='class-name'&&e.key==='Enter'&&!e.isComposing&&e.keyCode!==229){e.preventDefault();e.target.blur()}});
   app.addEventListener('focusout',e=>{if(e.target.dataset&&e.target.dataset.ch==='class-name')saveClassName(e.target,true)});
