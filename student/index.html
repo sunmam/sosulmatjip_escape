@@ -612,6 +612,50 @@ body{background-color:#F3EEFF}
 @media (max-width:380px){.kb-box{width:50px;height:48px}.er-hint{font-size:13px}}
 .sapp.er-app{padding-bottom:92px}
 
+/* ===== 가득 차린 식탁 (레벨 구분 없이) ===== */
+.feast{position:relative;margin:6px 2px 18px}
+.feast-top{position:relative;padding:14px;border:3px solid var(--ink);border-radius:34px;
+  background:linear-gradient(180deg,#E9A15B,#C97B3C);box-shadow:0 8px 0 #9C5A28,0 8px 0 3px var(--ink),0 22px 20px rgba(28,26,59,.25)}
+.feast-cloth{position:relative;border-radius:24px;padding:18px 10px 16px;
+  background:radial-gradient(circle at 50% 0,#fff 0 55%,transparent 56%) 0 -7px/18px 14px repeat-x,
+             radial-gradient(circle at 50% 100%,#fff 0 55%,transparent 56%) 0 calc(100% + 7px)/18px 14px repeat-x,
+             linear-gradient(90deg,rgba(255,146,184,.22) 50%,transparent 50%) 0 0/26px 26px,
+             linear-gradient(0deg,rgba(255,146,184,.22) 50%,transparent 50%) 0 0/26px 26px,#FFF9F4;
+  border:2px dashed rgba(232,80,138,.45);box-shadow:inset 0 0 0 5px #fff}
+.feast .tbl-grid{gap:12px 8px;align-items:start}
+.feast .dishw{max-width:120px}
+.feast .dishw .nm{font-size:11.5px;padding:0 6px;margin-top:-4px;position:relative;z-index:1}
+.feast.many .dishw .nm{font-size:10px}
+.feast-deco{position:absolute;top:-16px;font-size:26px;filter:drop-shadow(2px 3px 0 rgba(28,26,59,.25));z-index:2}
+.feast-deco.l{left:14px;transform:rotate(-12deg)}.feast-deco.r{right:14px;transform:rotate(10deg)}
+.feast-legs{display:flex;justify-content:space-between;padding:0 22%;margin-top:-2px}
+.feast-legs i{width:16px;height:20px;background:#9C5A28;border:3px solid var(--ink);border-top:0;border-radius:0 0 6px 6px}
+@media (max-width:600px){.feast-top{padding:10px;border-radius:26px}.feast-cloth{padding:16px 6px 14px}.feast .tbl-grid{gap:10px 6px}}
+
+/* ===== 수정: 지도 글씨·캐릭터·문 안내 ===== */
+/* 5개 문 아래 이름: 잘리지 않게 두 줄까지 */
+.dm{width:auto;min-width:40px;max-width:60px}
+.dm em{white-space:normal;overflow:visible;text-overflow:clip;max-width:60px;text-align:center;font-size:10.5px;line-height:1.15;word-break:keep-all;color:var(--ink)}
+.dm-path{margin-bottom:26px}
+/* 캐릭터: 동그라미 없이 스티커처럼 크게 */
+.er-emo{display:block;font-size:64px;line-height:1;
+  filter:drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff) drop-shadow(3px 5px 0 rgba(28,26,59,.35));
+  animation:bob 2.2s ease-in-out infinite}
+.er-hero.walking .er-emo{animation:waddle .36s ease-in-out infinite}
+.er-hero.hop .er-emo{animation:hop .45s ease}
+.er-shadow{width:52px;margin-top:-4px}
+/* 문제·음식·식탁 창이 열려 있을 때는 캐릭터 숨김 */
+.er-hero.away{opacity:0}
+/* 입장 화면 캐릭터 고르기도 동그라미 없이 */
+.charb .av.lg{background:none;border:0;box-shadow:none;width:auto;height:auto;font-size:44px;filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(2px 3px 0 rgba(28,26,59,.3))}
+.charb.on .av.lg{animation:hop .5s ease}
+/* 문으로 가자 안내: 바닥 위, 문 바로 앞에 크게 */
+.er-go{position:absolute;left:50%;top:calc(44% + 6px);bottom:auto;transform:translateX(-50%);z-index:125;font-size:17px;padding:3px 12px;white-space:nowrap;pointer-events:none}
+@keyframes goBob{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-8px)}}
+@media (max-width:380px){.er-emo{font-size:54px}.dm em{font-size:9.5px}.dm{max-width:54px}}
+/* 방 안의 글씨·상자·캐릭터가 문제·식탁 창 위로 올라오지 않게 (방 안에서만 겹침 순서) */
+.er-box{isolation:isolate}
+
 </style>
 </head>
 <body>
@@ -694,16 +738,16 @@ const TIERS=[
   ['🍚','불고기','달콤 짭조름'],
   ['🍣','모둠 초밥','입에서 녹는 맛']]},
  {name:'전설의 만찬',c:'#C7B3FF',items:[
-  ['👑','왕갈비찜','왕의 밥상'],
-  ['🎂','무지개 케이크','축하 폭죽 팡팡'],
-  ['🍧','팥빙수','산처럼 높은 빙수'],
-  ['🥮','월병','달처럼 둥근 과자'],
-  ['🍯','약과','K-디저트의 정점'],
-  ['🍨','파르페','1등의 디저트'],
-  ['🍫','두바이 초콜릿','바삭 초코 한 판'],
-  ['🦆','북경오리','바삭한 껍질의 전설'],
-  ['🥢','구절판','임금님도 반한 맛'],
-  ['🍰','티라미수','먹으면 소원 성취']]}
+  ['🍲','궁중 신선로','임금님 수라상의 보물 · 한국'],
+  ['👑','궁중 왕갈비찜','윤기 흐르는 왕의 갈비 · 한국'],
+  ['🍱','한정식 한 상','한 상 가득 궁중 요리 · 한국'],
+  ['🦆','북경오리','황제도 반한 바삭한 껍질 · 중국'],
+  ['🍣','가이세키 코스','일본 정통 코스 요리 · 일본'],
+  ['🥩','비프 웰링턴','영국 셰프의 시그니처 · 영국'],
+  ['🦞','랍스터 테르미도르','치즈 듬뿍 프랑스식 랍스터 · 프랑스'],
+  ['🥄','캐비아','바다의 검은 보석 · 러시아'],
+  ['🥘','부야베스','남프랑스 해산물 스튜 · 프랑스'],
+  ['🎂','크로캉부슈','슈크림을 쌓은 황금 탑 · 프랑스']]}
 ];
 const DEFAULT_MENU=[];
 TIERS.forEach((t,ti)=>t.items.forEach((f,i)=>DEFAULT_MENU.push({id:'t'+(ti+1)+'-'+i,e:f[0],n:f[1],d:f[2],img:'foods/t'+(ti+1)+'-'+i+'.jpg',tier:ti,qty:1})));
@@ -866,10 +910,11 @@ function tableHTML(list,{small=false,newest=-1,names=!small,max=0,emptyText='아
     const cols=n<=3?3:n<=8?4:n<=15?5:6;
     return `<div class="tbl-sm"><div class="tbl"><div class="tbl-grid" style="--cols:${cols}">${foods.map(dish).join('')}</div></div></div>`;
   }
-  const rows=TIERS.map((t,ti)=>({t,ti,list:foods.filter(f=>(f.tier||0)===ti)})).filter(r=>r.list.length);
-  return `<div><div class="tbl course">${rows.map(r=>`<div class="crow">
-      <span class="clab" style="background:${r.t.c}">Lv.${r.ti+1} ${esc(r.t.name)} <b>${r.list.length}</b></span>
-      <div class="tbl-grid" style="--cols:4">${r.list.map(dish).join('')}</div></div>`).join('')}</div></div>`;
+  /* 큰 식탁: 레벨 구분 없이 귀여운 원목 식탁 + 레이스 식탁보 위에 가득 */
+  const cols=n<=1?1:n<=4?2:n<=9?3:n<=16?4:5;
+  return `<div class="feast${n>12?' many':''}"><div class="feast-top"><span class="feast-deco l">🌷</span><span class="feast-deco r">🕯️</span>
+    <div class="feast-cloth"><div class="tbl-grid" style="--cols:${cols}">${foods.map(dish).join('')}</div></div></div>
+    <div class="feast-legs"><i></i><i></i></div></div>`;
 }
 function modal(html,{narrow=false}={}){
   closeModal();
@@ -1134,6 +1179,7 @@ function showTable(afterPick){
     if(nw&&sh){const top=nw.getBoundingClientRect().top-sh.getBoundingClientRect().top+sh.scrollTop;sh.scrollTop=Math.max(0,top-sh.clientHeight/2+nw.offsetHeight/2)}});
 }
 function sEnd(){
+  window.scrollTo(0,0);
   const me=ST.me;const sc=scoreOf(me);const qs=sQs();const c=sCls();const folder=c&&c.folderId&&S.folders[c.folderId];
   const tb=me.table||[];
   app.innerHTML=`<div class="sapp">${hud()}
@@ -1222,7 +1268,7 @@ async function startStudent(lock){
    - 한 화면: 캐릭터를 손(탭·끌기)이나 방향키로 움직여 방 바닥의 열쇠구멍 상자에 닿으면 문제,
      방의 열쇠구멍을 모두 열면 문이 열리고, 문까지 걸어가면 다음 방으로
    ========================================================= */
-Object.assign(UI,{logo:'소설 방탈출',emo:'🗝️',sub:'소설 속 5개의 방에 갇혔다!<br>문제를 풀어 열쇠를 모으고 탈출하자!',next:'방으로 돌아가기 ▶',endTitle:'🏆 대탈출 성공!'});
+Object.assign(UI,{logo:'소설 방탈출',emo:'🗝️',sub:'소설 속 5개의 방에 갇혔다.<br>문제를 풀고 탈출하자!!<br><b>먹방의 주인공은 너!</b> 🍽️',next:'방으로 돌아가기 ▶',endTitle:'🏆 대탈출 성공!'});
 
 const ROOMS=[
   {w1:'#FFC2A3',w2:'#FF9E73',fl:'#FFE3CC',fl2:'#FFD0AA',door:'#F26B3A',deco:['🏮','🍢','🥢','🏮']},
@@ -1231,6 +1277,7 @@ const ROOMS=[
   {w1:'#A9EEDB',w2:'#6ED9BC',fl:'#E1F8F1',fl2:'#C3F0E3',door:'#1FA586',deco:['🕯️','🎩','🍷','🕯️']},
   {w1:'#D6C8FF',w2:'#B39CFF',fl:'#F0EBFF',fl2:'#DDD2FF',door:'#7B5CF0',deco:['👑','✨','💎','✨']}
 ];
+const ROOM_NAMES=['분식 포차의 방','디저트 카페의 방','핫플 맛집의 방','셰프의 코스요리 방','전설의 만찬 방'];
 Object.assign(ST,{room:null,pos:{x:.5,y:.93},target:null,keys:{},face:1,moving:false,loopOn:false,lt:0,drag:false,curQ:null,qOpen:false,sayT:null,hitCool:0,moved:false});
 
 /* 방탈출은 늘 하→중→상 (무작위 설정이면 같은 수준 안에서만 섞음) */
@@ -1246,7 +1293,7 @@ function roomState(r){const l=roomQs(r);if(!l.length)return 'skip';if(l.every(qD
 /* 위쪽: 점수 + 5개 방 지도 */
 function hud(){
   const me=ST.me;const sc=scoreOf(me);
-  return `<div class="hud">${avatar(me.character)}<div class="nm">${esc(me.name)}<div class="muted" style="font-size:12px">${esc(className(sCls()))} · ${esc(groupName(sCls()||{},me.group))}</div></div><span id="netdot" class="tag" style="background:var(--pink);color:#fff" hidden>연결 끊김</span><div class="sc">${sc.score}<span style="font-size:14px">점</span></div></div>
+  return `<div class="hud"><div class="nm">${esc(me.name)}<div class="muted" style="font-size:12px">${esc(className(sCls()))} · ${esc(groupName(sCls()||{},me.group))}</div></div><span id="netdot" class="tag" style="background:var(--pink);color:#fff" hidden>연결 끊김</span><div class="sc">${sc.score}<span style="font-size:14px">점</span></div></div>
    <div class="er-map" aria-label="탈출 지도">${ROOMS.map((R,r)=>{const s=roomState(r);return `<span class="dm ${s}" style="--dc:${R.door}" title="${r+1}번 방 · ${TIERS[r].name}"><i>${s==='done'?'✓':s==='lock'?'🔒':s==='skip'?'·':r+1}</i><em>${TIERS[r].name}</em></span>`}).join('<b class="dm-path"></b>')}</div>`;
 }
 
@@ -1282,13 +1329,14 @@ function roomHTML(r){
         <div class="er-door${open?' unlocked':''}" id="door">
           <div class="er-glow"></div>
           <div class="er-panel"><span class="er-sign">EXIT</span><span class="er-knob"></span><span class="er-locks">${locks}</span></div>
-          ${open?'<span class="er-go">⬆ 문으로!</span>':''}
+
         </div>
       </div>
       <div class="er-floor"></div>
-      <div class="er-top"><span class="er-no">ROOM ${r+1}</span><b>${TIERS[r].name}의 방</b><span class="er-keys">🔑 ${doneN}/${list.length}</span></div>
+      <div class="er-top"><span class="er-no">ROOM ${r+1}</span><b>${ROOM_NAMES[r]}</b><span class="er-keys">🔑 ${doneN}/${list.length}</span></div>
+      ${open?'<div class="er-go">⬆ 문으로 가자!</div>':''}
       ${boxes}
-      <div class="er-hero" id="hero"><span class="er-say" id="say"></span><span class="er-sprite">${avatar(ST.me.character,'lg')}</span><span class="er-shadow"></span></div>
+      <div class="er-hero" id="hero"><span class="er-say" id="say"></span><span class="er-sprite"><span class="er-emo">${charOf(ST.me.character)[0]}</span></span><span class="er-shadow"></span></div>
       ${ST.moved?'':'<div class="er-hint" id="hint">👆 바닥을 누르거나 끌어서 캐릭터를 움직여요<br><small>PC는 방향키도 돼요</small></div>'}
     </div>
   </section>`;
@@ -1301,7 +1349,7 @@ function layoutRoom(){
 function drawHero(g){
   const h=$('#hero');if(!h)return;const p=toScreen(g,ST.pos.x,ST.pos.y);
   h.style.transform=`translate(${p.sx}px,${p.sy}px) translate(-50%,-92%) scale(${p.sc})`;h.style.zIndex=Math.round(ST.pos.y*100)+1;
-  h.classList.toggle('walking',ST.moving);h.style.setProperty('--face',ST.face);
+  h.classList.toggle('walking',ST.moving);h.classList.toggle('away',!!$('.ov')||ST.qOpen);h.style.setProperty('--face',ST.face);
 }
 function say(t,ms=1700){const s=$('#say');if(!s)return;s.textContent=t;s.classList.add('on');clearTimeout(ST.sayT);ST.sayT=setTimeout(()=>{const x=$('#say');x&&x.classList.remove('on')},ms)}
 
@@ -1362,6 +1410,7 @@ window.addEventListener('resize',()=>{if(ST.view==='play')layoutRoom()});
 
 /* 첫 화면: 5개의 방 복도 */
 function sIntro(){
+  window.scrollTo(0,0);
   const n=sNovel();
   app.innerHTML=`<div class="sapp">${hud()}
    <div class="card er-intro">
@@ -1380,6 +1429,7 @@ function sIntro(){
 
 /* 방 화면 (문제 창이 열려 있으면 함께) */
 function sPlay(trans){
+  if(!ST.qOpen)window.scrollTo(0,0);
   if(ST.room==null){const q=firstOpen();if(!q){ST.view='end';return sEnd()}ST.room=tierFor(q)}
   app.innerHTML=`<div class="sapp wide er-app"><div class="play-grid"><div>${hud()}${roomHTML(ST.room)}</div>${sideTable()}</div></div>${tray()}`;
   ST.justOpened=null;

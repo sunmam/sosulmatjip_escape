@@ -521,16 +521,16 @@ const TIERS=[
   ['🍚','불고기','달콤 짭조름'],
   ['🍣','모둠 초밥','입에서 녹는 맛']]},
  {name:'전설의 만찬',c:'#C7B3FF',items:[
-  ['👑','왕갈비찜','왕의 밥상'],
-  ['🎂','무지개 케이크','축하 폭죽 팡팡'],
-  ['🍧','팥빙수','산처럼 높은 빙수'],
-  ['🥮','월병','달처럼 둥근 과자'],
-  ['🍯','약과','K-디저트의 정점'],
-  ['🍨','파르페','1등의 디저트'],
-  ['🍫','두바이 초콜릿','바삭 초코 한 판'],
-  ['🦆','북경오리','바삭한 껍질의 전설'],
-  ['🥢','구절판','임금님도 반한 맛'],
-  ['🍰','티라미수','먹으면 소원 성취']]}
+  ['🍲','궁중 신선로','임금님 수라상의 보물 · 한국'],
+  ['👑','궁중 왕갈비찜','윤기 흐르는 왕의 갈비 · 한국'],
+  ['🍱','한정식 한 상','한 상 가득 궁중 요리 · 한국'],
+  ['🦆','북경오리','황제도 반한 바삭한 껍질 · 중국'],
+  ['🍣','가이세키 코스','일본 정통 코스 요리 · 일본'],
+  ['🥩','비프 웰링턴','영국 셰프의 시그니처 · 영국'],
+  ['🦞','랍스터 테르미도르','치즈 듬뿍 프랑스식 랍스터 · 프랑스'],
+  ['🥄','캐비아','바다의 검은 보석 · 러시아'],
+  ['🥘','부야베스','남프랑스 해산물 스튜 · 프랑스'],
+  ['🎂','크로캉부슈','슈크림을 쌓은 황금 탑 · 프랑스']]}
 ];
 const DEFAULT_MENU=[];
 TIERS.forEach((t,ti)=>t.items.forEach((f,i)=>DEFAULT_MENU.push({id:'t'+(ti+1)+'-'+i,e:f[0],n:f[1],d:f[2],img:'foods/t'+(ti+1)+'-'+i+'.jpg',tier:ti,qty:1})));
@@ -693,10 +693,11 @@ function tableHTML(list,{small=false,newest=-1,names=!small,max=0,emptyText='아
     const cols=n<=3?3:n<=8?4:n<=15?5:6;
     return `<div class="tbl-sm"><div class="tbl"><div class="tbl-grid" style="--cols:${cols}">${foods.map(dish).join('')}</div></div></div>`;
   }
-  const rows=TIERS.map((t,ti)=>({t,ti,list:foods.filter(f=>(f.tier||0)===ti)})).filter(r=>r.list.length);
-  return `<div><div class="tbl course">${rows.map(r=>`<div class="crow">
-      <span class="clab" style="background:${r.t.c}">Lv.${r.ti+1} ${esc(r.t.name)} <b>${r.list.length}</b></span>
-      <div class="tbl-grid" style="--cols:4">${r.list.map(dish).join('')}</div></div>`).join('')}</div></div>`;
+  /* 큰 식탁: 레벨 구분 없이 귀여운 원목 식탁 + 레이스 식탁보 위에 가득 */
+  const cols=n<=1?1:n<=4?2:n<=9?3:n<=16?4:5;
+  return `<div class="feast${n>12?' many':''}"><div class="feast-top"><span class="feast-deco l">🌷</span><span class="feast-deco r">🕯️</span>
+    <div class="feast-cloth"><div class="tbl-grid" style="--cols:${cols}">${foods.map(dish).join('')}</div></div></div>
+    <div class="feast-legs"><i></i><i></i></div></div>`;
 }
 function modal(html,{narrow=false}={}){
   closeModal();
