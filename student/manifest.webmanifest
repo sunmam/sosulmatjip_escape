@@ -1,6 +1,6 @@
 {
   "name": "소설 맛집 학생용(방탈출형)",
-  "short_name": "소설 방탈출",
+  "short_name": "소설 맛집",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
