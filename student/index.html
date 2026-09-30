@@ -838,6 +838,7 @@ const Store=(()=>{
     peek(p){return all[p]},
     coll(prefix){const out={};const pre=prefix+'/';for(const p in all){if(p.startsWith(pre)&&p.indexOf('/',pre.length)<0)out[p.slice(pre.length)]=all[p]}return out},
     refresh:pull,
+    put(path,data){all[path]=clone(data);notify()},   // 화면에만 먼저 반영 (저장은 따로)
     set:(path,data)=>post({op:'set',path,data}),
     update:(path,data)=>post({op:'update',path,data}),
     del:path=>post({op:'delete',path}),
@@ -866,10 +867,18 @@ function syncS(){
 }
 
 /* ---------- 메뉴(음식) ---------- */
-function menuItems(){return (S.menu&&Array.isArray(S.menu.items))?S.menu.items:DEFAULT_MENU}
+/* 메뉴판: 기본 메뉴판(settings/menu) + 반 전용 메뉴판(settings/menu-<반 id>)
+   전용 메뉴판이 없는 반은 기본 메뉴판을 씀. MENU_CTX()는 지금 화면이 보고 있는 반 id */
+let MENU_CTX=()=>null;
+function classMenuKey(cid){return cid?'settings/menu-'+cid:'settings/menu'}
+function hasClassMenu(cid){const m=cid&&Store.peek(classMenuKey(cid));return !!(m&&Array.isArray(m.items))}
+function baseMenuItems(){return (S.menu&&Array.isArray(S.menu.items))?S.menu.items:DEFAULT_MENU}
+function menuItems(cid=MENU_CTX()){return hasClassMenu(cid)?Store.peek(classMenuKey(cid)).items:baseMenuItems()}
 function menuMap(){const m={};menuItems().forEach(f=>m[f.id]=f);return m}
+/* 다른 반 메뉴판에만 있는 음식도 찾기 (식탁·제출물 보여 줄 때) */
+function anyMenuFood(id){const sets=Store.coll('settings');for(const k in sets){const it=sets[k]&&sets[k].items;if(Array.isArray(it)){const f=it.find(x=>x.id===id);if(f)return f}}return null}
 function foodOf(id,fallbackName){
-  const f=menuMap()[id]||DEFAULT_MAP[id];
+  const f=menuMap()[id]||anyMenuFood(id)||DEFAULT_MAP[id];
   if(f)return{...f,tier:f.tier||0};
   return{id,n:fallbackName||'음식',e:guessEmoji(fallbackName),d:'',tier:0};
 }
@@ -911,7 +920,15 @@ function className(c){
   if(!c)return '';
   return String(c.name||'').trim()||legacyClassName(c)||'이름 없는 반';
 }
-function scoreOf(st){let s=0,ok=0;Object.values(st.answers||{}).forEach(a=>{if(a.ok){ok++;s+=a.tries===1?10:5}});return{score:s,correct:ok}}
+/* 점수: 하 5점 · 중 10점 · 상 15점 (두 번째에 맞히면 절반, 올림) */
+const LV_POINTS={'하':5,'중':10,'상':15};
+function qPoints(level,tries){const f=LV_POINTS[level]||10;return tries===1?f:Math.ceil(f/2)}
+function scoreOf(st){
+  const qs=((S.novels[st.novelId]||{}).questions)||[];const lvOf={};qs.forEach(q=>lvOf[q.id]=q.level);
+  let s=0,ok=0;
+  Object.entries(st.answers||{}).forEach(([qid,a])=>{if(a&&a.ok){ok++;s+=qPoints(a.lv||lvOf[qid]||'중',a.tries)}});
+  return{score:s,correct:ok};
+}
 function groupName(c,gid){const g=((c&&c.groups)||[]).find(x=>x.id===gid);return g?g.name:'모둠 없음'}
 function classesSorted(){return Object.entries(S.classes).map(([id,c])=>({...c,id})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
 const ROT=[-6,4,-2,7,-4,3,-7,5,-3,6];
@@ -1100,11 +1117,11 @@ async function sAnswer(v){
   else{if(q.type==='short'&&!String(v).trim()){toast('답을 입력해 주세요.');return}ok=checkAns(q,v)}
   ST.busy=true;ST.tries++;
   if(ok){
-    ST.me.answers[q.id]={ok:true,tries:ST.tries,a:String(v),at:Date.now()};
+    ST.me.answers[q.id]={ok:true,tries:ST.tries,a:String(v),at:Date.now(),lv:q.level};
     const hasFood=anyFoodLeft();
     if(hasFood)ST.me.pendingPick=q.id;
     saveMe();
-    await burst('','정답!',ST.tries===1?'+10점':'+5점');
+    await burst('','정답!',`+${qPoints(q.level,ST.tries)}점`);
     ST.busy=false;ST.tries=0;
     if(hasFood)openPicker();else{toast('모둠 메뉴가 모두 소진됐어요! 다음 문제로!');nextQ()}
   }else if(ST.tries<2){
@@ -1246,7 +1263,7 @@ function onStoreChange(){
     classes:JSON.stringify(S.classes),folders:JSON.stringify(S.folders),
     novel:c?JSON.stringify(S.novels[c.novelId]||null):'',
     pantry:ST.me?JSON.stringify(S.pantry[pantryId()]||null):'',
-    menu:JSON.stringify(S.menu)+Object.keys(S.foodimg).join()
+    menu:JSON.stringify(menuItems())+Object.keys(S.foodimg).join()
   };
   const ch=k=>sig[k]!==ST.sig[k];
   const changed=Object.keys(sig).filter(ch);ST.sig=sig;
@@ -1266,6 +1283,7 @@ function onStoreChange(){
   if(ch('pantry')||ch('menu'))refreshPicker();
 }
 async function startStudent(lock){
+  MENU_CTX=()=>ST.classId;   // 학생은 자기 반 메뉴판 (전용이 없으면 기본 메뉴판)
   ST.lockClass=lock||null;
   const saved=LS.get('alsE-me',{});if(saved.classId){ST.classId=saved.classId;ST.group=saved.group||null;ST.char=saved.char||0}
   if(lock&&saved.classId!==lock){ST.classId=lock;ST.group=null}
@@ -1439,6 +1457,7 @@ function sIntro(){
        <li>🔑 반짝이는 <b>열쇠구멍 상자</b>에 닿으면 문제가 열려요.</li>
        <li>🍽️ 맞히면 그 방 레벨의 <b>음식</b>을 골라 내 식탁에 차려요.</li>
        <li>🚪 열쇠구멍을 모두 열면 <b>문이 열려요</b>. 문까지 걸어가면 다음 방으로!</li>
+       <li>⭐ 점수는 <b>하 5점 · 중 10점 · 상 15점</b> (두 번째에 맞히면 절반)</li>
        <li>😵 두 번 틀리면 정답을 보고 넘어가요 (점수·음식은 없어요).</li>
      </ul>
      <button class="btn tang" style="font-size:20px;padding:14px" data-sact="start">🚪 1번 방으로 입장 ▶</button>
@@ -1470,12 +1489,12 @@ function openQ(trans,instant,from){
   m.innerHTML=`<div class="qov-in" style="--dr:${ROOMS[t].door}">
     <div class="qov-hd"><span class="tag" style="background:${ROOMS[t].door};color:#fff">🔑 ${no}번 열쇠구멍</span><span class="tag" style="background:#fff">ROOM ${t+1}</span><span class="grow"></span><button class="btn sm" data-sact="kh-close">방으로 ✕</button></div>
     <div class="panel ${trans||'tr-zoom'}" id="panel">
-      <div class="panel-top"><span class="ep">Q.${no}</span><span class="tag lv-${q.level}">${q.level}수준</span><span class="tag" style="background:#fff">${TYPE[q.type]}${q.open?' · 내 생각':''}</span><span class="grow"></span>${ST.tries?'<span class="tag" style="background:var(--pink);color:#fff">마지막 기회!</span>':''}</div>
+      <div class="panel-top"><span class="ep">Q.${no}</span><span class="tag lv-${q.level}">${q.level}수준</span><span class="tag" style="background:var(--sun)">⭐ ${qPoints(q.level,ST.tries?2:1)}점</span><span class="tag" style="background:#fff">${TYPE[q.type]}${q.open?' · 내 생각':''}</span><span class="grow"></span>${ST.tries?'<span class="tag" style="background:var(--pink);color:#fff">마지막 기회!</span>':''}</div>
       <div class="scene"><div class="scene-emo">${esc(q.scene||['📖','🔍','🧠'][LVI[q.level]||0])}</div><div class="sfx">${pick(SFX)}</div><div class="sfx l">${pick(SFX2)}</div></div>
       <div class="bubble">${esc(q.q)}</div>
     </div>
     <div class="answers" id="answers">${ans}</div>
-    <p class="hintline" style="margin-top:12px;color:#fff">맞히면 🗝️ 열쇠 + Lv.${t+1} ${TIERS[t].name} 음식!</p>
+    <p class="hintline" style="margin-top:12px;color:#fff">맞히면 ⭐ ${qPoints(q.level,ST.tries?2:1)}점 + 🗝️ 열쇠 + Lv.${t+1} ${TIERS[t].name} 음식!</p>
   </div>`;
   document.body.appendChild(m);
 }

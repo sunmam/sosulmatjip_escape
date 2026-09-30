@@ -606,6 +606,7 @@ const Store=(()=>{
     peek(p){return all[p]},
     coll(prefix){const out={};const pre=prefix+'/';for(const p in all){if(p.startsWith(pre)&&p.indexOf('/',pre.length)<0)out[p.slice(pre.length)]=all[p]}return out},
     refresh:pull,
+    put(path,data){all[path]=clone(data);notify()},   // 화면에만 먼저 반영 (저장은 따로)
     set:(path,data)=>post({op:'set',path,data}),
     update:(path,data)=>post({op:'update',path,data}),
     del:path=>post({op:'delete',path}),
@@ -634,10 +635,18 @@ function syncS(){
 }
 
 /* ---------- 메뉴(음식) ---------- */
-function menuItems(){return (S.menu&&Array.isArray(S.menu.items))?S.menu.items:DEFAULT_MENU}
+/* 메뉴판: 기본 메뉴판(settings/menu) + 반 전용 메뉴판(settings/menu-<반 id>)
+   전용 메뉴판이 없는 반은 기본 메뉴판을 씀. MENU_CTX()는 지금 화면이 보고 있는 반 id */
+let MENU_CTX=()=>null;
+function classMenuKey(cid){return cid?'settings/menu-'+cid:'settings/menu'}
+function hasClassMenu(cid){const m=cid&&Store.peek(classMenuKey(cid));return !!(m&&Array.isArray(m.items))}
+function baseMenuItems(){return (S.menu&&Array.isArray(S.menu.items))?S.menu.items:DEFAULT_MENU}
+function menuItems(cid=MENU_CTX()){return hasClassMenu(cid)?Store.peek(classMenuKey(cid)).items:baseMenuItems()}
 function menuMap(){const m={};menuItems().forEach(f=>m[f.id]=f);return m}
+/* 다른 반 메뉴판에만 있는 음식도 찾기 (식탁·제출물 보여 줄 때) */
+function anyMenuFood(id){const sets=Store.coll('settings');for(const k in sets){const it=sets[k]&&sets[k].items;if(Array.isArray(it)){const f=it.find(x=>x.id===id);if(f)return f}}return null}
 function foodOf(id,fallbackName){
-  const f=menuMap()[id]||DEFAULT_MAP[id];
+  const f=menuMap()[id]||anyMenuFood(id)||DEFAULT_MAP[id];
   if(f)return{...f,tier:f.tier||0};
   return{id,n:fallbackName||'음식',e:guessEmoji(fallbackName),d:'',tier:0};
 }
@@ -679,7 +688,15 @@ function className(c){
   if(!c)return '';
   return String(c.name||'').trim()||legacyClassName(c)||'이름 없는 반';
 }
-function scoreOf(st){let s=0,ok=0;Object.values(st.answers||{}).forEach(a=>{if(a.ok){ok++;s+=a.tries===1?10:5}});return{score:s,correct:ok}}
+/* 점수: 하 5점 · 중 10점 · 상 15점 (두 번째에 맞히면 절반, 올림) */
+const LV_POINTS={'하':5,'중':10,'상':15};
+function qPoints(level,tries){const f=LV_POINTS[level]||10;return tries===1?f:Math.ceil(f/2)}
+function scoreOf(st){
+  const qs=((S.novels[st.novelId]||{}).questions)||[];const lvOf={};qs.forEach(q=>lvOf[q.id]=q.level);
+  let s=0,ok=0;
+  Object.entries(st.answers||{}).forEach(([qid,a])=>{if(a&&a.ok){ok++;s+=qPoints(a.lv||lvOf[qid]||'중',a.tries)}});
+  return{score:s,correct:ok};
+}
 function groupName(c,gid){const g=((c&&c.groups)||[]).find(x=>x.id===gid);return g?g.name:'모둠 없음'}
 function classesSorted(){return Object.entries(S.classes).map(([id,c])=>({...c,id})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))}
 const ROT=[-6,4,-2,7,-4,3,-7,5,-3,6];
@@ -747,7 +764,7 @@ const SAMPLE_NOVEL={
  ]
 };
 
-const T={openCls:{},openArc:false,tab:LS.get('alsE-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('alsE-t-class',null),pending:false,saving:0,
+const T={openCls:{},openArc:false,menuCls:'',tab:LS.get('alsE-t-tab','novels'),novelId:null,editNovel:null,classId:LS.get('alsE-t-class',null),pending:false,saving:0,
   nf:{n:'',d:'',tier:0,qty:1,cands:[],ci:0,up:'',searching:false,q:''}};
 const TABS=[['novels','📚 소설'],['classes','🏫 반·모둠'],['menu','🍱 메뉴판'],['questions','✏️ 문제'],['board','📊 활동 보드']];
 /* 학생용 주소: 교사가 저장한 주소 → 설정값 → 같은 사이트의 …/student/ 자동 */
@@ -845,7 +862,7 @@ function vClasses(){
       <div class="fld">모둠<div class="gchips">${(c.groups||[]).map(g=>`<span class="chip">${esc(g.name)}<button data-act="del-group" data-id="${c.id}" data-g="${g.id}" aria-label="${esc(g.name)} 삭제">✕</button></span>`).join('')}</div>
         <div class="row"><input class="in grow" id="ng-${c.id}" data-keep placeholder="모둠 이름 (예: 감자팀)"><button class="btn sm sun" data-act="add-group" data-id="${c.id}">추가</button></div></div>
       <label class="fld">제출 폴더<select class="in" data-ch="class-folder" data-id="${c.id}"><option value="">(없음 — 활동 보드에서 만들기)</option>${folders(c.id).map(([fid,f])=>`<option value="${fid}" ${c.folderId===fid?'selected':''}>${esc(f.name)}</option>`).join('')}</select></label>
-      <div class="row"><button class="btn sm" data-act="copy-class" data-id="${c.id}">반 복사</button><button class="btn sm" data-act="reset-pantry" data-id="${c.id}">모둠 음식 다시 채우기</button><button class="btn sm" data-act="archive-class" data-id="${c.id}">📦 보관하기</button></div>
+      <div class="row"><button class="btn sm" data-act="class-menu" data-id="${c.id}">🍱 메뉴판 ${hasClassMenu(c.id)?"(전용)":"(기본)"}</button><button class="btn sm" data-act="copy-class" data-id="${c.id}">반 복사</button><button class="btn sm" data-act="reset-pantry" data-id="${c.id}">모둠 음식 다시 채우기</button><button class="btn sm" data-act="archive-class" data-id="${c.id}">📦 보관하기</button></div>
       </div></details>
     </div>`}).join('')}</div>
    ${vArchive()}
@@ -866,18 +883,44 @@ function showQR(url,title){
 }
 
 /* --- 메뉴판 --- */
+/* 지금 편집 중인 메뉴판에 저장: 화면엔 바로, 저장은 잠깐 모아서 (＋/− 빠르게 눌러도 순서 꼬이지 않게) */
 function saveMenu(items){
-  S.menu={items};
+  const key=classMenuKey(T.menuCls);const data={items,updatedAt:Date.now()};
+  if(!T.menuCls)S.menu=data;
+  Store.put(key,data);
   clearTimeout(saveMenu.t);
-  saveMenu.t=setTimeout(()=>tWrite(()=>Store.set('settings/menu',{items:S.menu.items,updatedAt:Date.now()})),400);
+  saveMenu.t=setTimeout(()=>tWrite(()=>Store.set(key,Store.doc(key))),400);
 }
-function menuMutate(fn){const items=clone(menuItems());fn(items);saveMenu(items);T.pending=false;tRender()}
+function menuMutate(fn){const items=clone(menuItems(T.menuCls));fn(items);saveMenu(items);T.pending=false;tRender()}
+function menuScopeHTML(){
+  const cls=liveClasses();const sel=T.menuCls;const own=sel&&hasClassMenu(sel);
+  const usingBase=cls.filter(c=>!hasClassMenu(c.id)).map(c=>className(c));
+  return `<div class="card stack menu-scope" style="margin-bottom:18px;gap:10px">
+    <label class="row" style="gap:8px;font-family:var(--ui);font-size:16px">🍱 편집할 메뉴판
+      <select class="in" data-ch="menu-scope" style="width:auto;font-family:var(--ui)"><option value="">📋 기본 메뉴판 (전용 메뉴판이 없는 반)</option>
+      ${cls.map(c=>`<option value="${c.id}" ${sel===c.id?'selected':''}>${esc(className(c))} ${hasClassMenu(c.id)?'· ✨ 전용 메뉴판':'· 기본 메뉴판 사용 중'}</option>`).join('')}</select></label>
+    ${!sel?`<span class="muted" style="font-size:13px">이 메뉴판을 쓰는 반: ${usingBase.length?esc(usingBase.join(', ')):'없음 (모든 반이 전용 메뉴판을 써요)'}</span>`
+      :own?`<div class="row" style="gap:8px"><span class="tag" style="background:var(--grape);color:#fff">✨ ${esc(className(S.classes[sel]))} 전용 메뉴판</span><span class="muted" style="font-size:13px">여기서 바꾸면 이 반에만 적용돼요</span><span class="grow"></span><button class="btn sm" data-act="menu-own-off">기본 메뉴판으로 되돌리기</button></div>`
+      :''}
+  </div>`;
+}
 function vMenu(){
-  const items=menuItems();const nf=T.nf;
+  if(T.menuCls&&(!S.classes[T.menuCls]||S.classes[T.menuCls].archived))T.menuCls='';
+  MENU_CTX=()=>T.menuCls;
+  if(T.menuCls&&!hasClassMenu(T.menuCls)){const c=S.classes[T.menuCls];
+    return `<div class="sec-h"><h2>메뉴판 설정</h2></div>${menuScopeHTML()}
+     <div class="card stack" style="text-align:center;gap:12px;padding:26px">
+       <div style="font-size:40px">🍱</div>
+       <p style="font-family:var(--ui);font-size:18px;margin:0"><b>${esc(className(c))}</b>은(는) 지금 <b>기본 메뉴판</b>을 쓰고 있어요.</p>
+       <p class="muted" style="margin:0">이 반만 다른 음식·개수로 하고 싶으면 전용 메뉴판을 만들어요.<br>지금 기본 메뉴판을 그대로 복사해서 시작해요.</p>
+       <button class="btn tang" style="justify-self:center;font-size:18px;padding:12px 20px" data-act="menu-own-on">✨ 이 반만의 메뉴판 만들기</button>
+     </div>`}
+  const items=menuItems(T.menuCls);const nf=T.nf;
   const perGroup=items.reduce((a,f)=>a+(+f.qty||0),0);
   const kinds=items.filter(f=>+f.qty>0).length;
   const cur=nf.up?{n:nf.n||'새 음식',img:nf.up,e:guessEmoji(nf.n)}:{n:nf.n||'새 음식',img:nf.cands[nf.ci]||'',e:guessEmoji(nf.n)};
   return `<div class="sec-h"><h2>메뉴판 설정</h2><span class="muted">문제를 맞힌 학생이 고르는 음식이에요 · 개수는 <b>모둠마다</b> 준비되는 양이에요</span></div>
+   ${menuScopeHTML()}
    <div class="stats" style="margin-bottom:18px">
      <div class="stat"><b>${kinds}</b><span>음식 종류</span></div>
      <div class="stat"><b>${perGroup}</b><span>모둠당 음식 수</span></div>
@@ -1058,6 +1101,7 @@ function ranked(list){return list.map(s=>({...s,...scoreOf(s),_at:reachedAt(s)})
   .map((s,i)=>({...s,rank:i+1}))}
 function takenCount(p){return Object.values((p&&p.taken)||{}).reduce((a,l)=>a+(Array.isArray(l)?l.length:(l?1:0)),0)}
 function vBoard(){
+  MENU_CTX=()=>T.classId;
   const cls=classesSorted();
   if(!cls.length)return `<div class="card">먼저 🏫 반·모둠 탭에서 반을 만들어 주세요.</div>`;
   const live=cls.filter(x=>!x.archived),arc=cls.filter(x=>x.archived);
@@ -1186,6 +1230,7 @@ const TA={
   async 'copy-class'(b){const c=S.classes[b.dataset.id];if(!c)return;const id=uid('c');
     const a=document.activeElement;if(a&&a.blur)a.blur();T.pending=false;
     await tWrite(()=>Store.set('classes/'+id,{name:className(c)+' 복사본',groups:clone(c.groups||[]),novelId:c.novelId||'',active:false,folderId:'',createdAt:Date.now()}));
+    const src=b.dataset.id;if(hasClassMenu(src))await tWrite(()=>Store.set(classMenuKey(id),{items:clone(menuItems(src)),updatedAt:Date.now()}));
     toast('반을 복사했어요. 반 이름을 바꿔 주세요.');
     setTimeout(()=>{const el=$('#cn-'+id);if(el){el.scrollIntoView({block:'center'});el.focus();el.select()}},120)},
   /* 소설 복사: 본문·문제·순서 설정까지 (복사본을 고쳐도 원본은 그대로) */
@@ -1206,7 +1251,7 @@ const TA={
     const subs=Object.keys(S.subs).filter(k=>S.subs[k].classId===id||fids.includes(S.subs[k].folderId));
     const pans=Object.keys(S.pantry).filter(k=>k.startsWith(id+'-'));
     confirmBox(`<b>${esc(className(c))}</b>을(를) <b>완전히 삭제</b>할까요?<br><br>학생 기록 ${studs.length}명 · 제출 폴더 ${fids.length}개 · 제출물 ${subs.length}개가 함께 지워지고 <b>되돌릴 수 없어요.</b><br>필요하면 먼저 📊 기록 보기 → 제출 폴더 <b>다운로드</b>로 받아 두세요.`,'🗑 완전 삭제',
-      async()=>{const ops=[...studs.map(k=>'students/'+k),...subs.map(k=>'submissions/'+k),...fids.map(k=>'folders/'+k),...pans.map(k=>'pantry/'+k),'classes/'+id].map(path=>({op:'delete',path}));
+      async()=>{const ops=[...studs.map(k=>'students/'+k),...subs.map(k=>'submissions/'+k),...fids.map(k=>'folders/'+k),...pans.map(k=>'pantry/'+k),...(hasClassMenu(id)?[classMenuKey(id)]:[]),'classes/'+id].map(path=>({op:'delete',path}));if(T.menuCls===id)T.menuCls='';
         if(T.classId===id)T.classId=null;await tWrite(()=>Store.batch(ops));toast('🗑 완전히 삭제했어요.')})},
   'reset-pantry'(b){const c=S.classes[b.dataset.id];confirmBox(`${esc(className(c))} 모든 모둠의 음식을 메뉴판 개수대로 다시 채울까요? (학생 식탁은 그대로예요)`,'다시 채우기',async()=>{
     await tWrite(()=>Store.batch((c.groups||[]).map(g=>({op:'set',path:'pantry/'+pantryKey({...c,id:b.dataset.id},g.id),data:{taken:{}}}))));toast('음식을 다시 채웠어요.')})},
@@ -1226,10 +1271,10 @@ const TA={
     T.nf={n:'',d:'',tier:nf.tier,qty:nf.qty,cands:[],ci:0,up:'',searching:false,q:''};tRender();
     toast(`「${item.n}」을(를) 메뉴판에 추가했어요!`)},
   'm-qty'(b){menuMutate(items=>{const f=items.find(x=>x.id===b.dataset.id);if(f)f.qty=Math.max(0,Math.min(30,(+f.qty||0)+(+b.dataset.d)))})},
-  'm-del'(b){const f=menuItems().find(x=>x.id===b.dataset.id);if(!f)return;
+  'm-del'(b){const f=menuItems(T.menuCls).find(x=>x.id===b.dataset.id);if(!f)return;
     confirmBox(`「${esc(f.n)}」을(를) 메뉴판에서 뺄까요? (이미 식탁에 차린 학생 음식은 그대로예요)`,'빼기',()=>{menuMutate(items=>{const i=items.findIndex(x=>x.id===f.id);if(i>=0)items.splice(i,1)});if(S.foodimg[f.id])tWrite(()=>Store.del('foodimg/'+f.id))})},
   'm-photo'(b){
-    const f=menuItems().find(x=>x.id===b.dataset.id);if(!f)return;
+    const f=menuItems(T.menuCls).find(x=>x.id===b.dataset.id);if(!f)return;
     const m=modal(`<div class="modal-hd"><h2>「${esc(f.n)}」 사진 바꾸기</h2><button class="btn sm" data-close>닫기</button></div>
       <div class="stack"><div class="row"><input class="in grow" id="mp-q" value="${esc(f.n)}" placeholder="찾을 이름"><button class="btn sky" id="mp-go">🔍 찾기</button><label class="btn"><input type="file" accept="image/*" id="mp-file" hidden>📷 내 사진</label></div>
       <div class="menu-grid" id="mp-list"><p class="muted">사진을 찾는 중…</p></div></div>`);
@@ -1245,6 +1290,14 @@ const TA={
       await tWrite(()=>Store.set('foodimg/'+f.id,{src}));menuMutate(items=>{const it=items.find(y=>y.id===f.id);if(it)it.img=''});toast('사진을 올렸어요.')}catch(err){toast('사진을 읽지 못했어요.')}};
     run();
   },
+  /* 반별 메뉴판 */
+  'class-menu'(b){T.menuCls=b.dataset.id;T.tab='menu';LS.set('alsE-t-tab',T.tab);T.pending=false;tRender();window.scrollTo(0,0)},
+  async 'menu-own-on'(){const cid=T.menuCls;if(!cid)return;
+    await tWrite(()=>Store.set(classMenuKey(cid),{items:clone(baseMenuItems()),updatedAt:Date.now()}));T.pending=false;tRender();
+    toast(`✨ ${className(S.classes[cid])} 전용 메뉴판을 만들었어요. 이제 여기서 바꾸면 이 반에만 적용돼요.`)},
+  'menu-own-off'(){const cid=T.menuCls;if(!cid)return;
+    confirmBox(`<b>${esc(className(S.classes[cid]))}</b>의 전용 메뉴판을 지우고 <b>기본 메뉴판</b>을 쓰게 할까요?<br>이 반에서 바꾼 음식·개수는 사라져요. (학생 식탁에 이미 차린 음식은 그대로예요)`,'기본 메뉴판 쓰기',
+      async()=>{clearTimeout(saveMenu.t);await tWrite(()=>Store.del(classMenuKey(cid)));T.pending=false;tRender();toast('기본 메뉴판으로 되돌렸어요.')})},
   'bulk-qty'(){const v=+$('#bulk-qty').value;confirmBox(`모든 음식의 개수를 모둠당 ${v}개로 바꿀까요?`,'바꾸기',()=>menuMutate(items=>items.forEach(f=>f.qty=v)))},
   'menu-reset'(){confirmBox('메뉴판을 기본 음식 50가지(각 1개)로 되돌릴까요? 추가한 음식은 사라져요.','되돌리기',()=>menuMutate(items=>items.splice(0,items.length,...clone(DEFAULT_MENU))))},
   /* 문제 */
@@ -1287,6 +1340,7 @@ function tChange(e){
     if(el.value&&prev)toast('새 소설로 바꿨어요. 학생들은 같은 QR로 들어와 새로 시작해요. (이전 소설로 되돌리면 그 기록이 다시 보여요)')}
   else if(k==='class-folder')tWrite(()=>Store.update('classes/'+id,{folderId:el.value}));
   else if(k==='q-novel'){T.novelId=el.value;el.blur();tRender()}
+  else if(k==='menu-scope'){T.menuCls=el.value;el.blur();T.pending=false;tRender()}
   else if(k==='q-order'){const id=T.novelId,v=el.value;el.blur();S.novels[id].order=v;T.pending=false;tRender();
     tWrite(()=>Store.update('novels/'+id,{order:v}));toast('학생에게 내는 순서: '+ORDER_MODES[v])}
   else if(k==='q-field'){const i=+el.dataset.i;qMutate(a=>{a[i][el.dataset.f]=el.value},false)}
