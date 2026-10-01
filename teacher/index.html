@@ -1115,7 +1115,7 @@ function vBoard(){
   const folders=Object.entries(S.folders).map(([id,f])=>({...f,id})).filter(f=>f.classId===c.id).sort((a,b)=>a.createdAt-b.createdAt);
   return `<div class="sec-h"><h2>활동 보드</h2><div class="pills">${live.map(pill).join('')}</div></div>
   ${arc.length?`<div class="row arc-pills" style="margin:-4px 0 16px"><span class="muted" style="font-family:var(--ui);font-size:14px">📦 보관함</span><div class="pills">${arc.map(pill).join('')}</div></div>`:''}
-  ${c.archived?`<div class="linkbox" style="background:#EDEAF7;margin-bottom:16px">📦 보관한 반이에요. 학생 화면에는 보이지 않고, 여기서 기록과 제출 폴더를 볼 수 있어요.<span class="grow"></span><button class="btn sm mint" data-act="unarchive-class" data-id="${c.id}">↩ 복원</button></div>`:''}
+  ${c.archived?`<div class="linkbox" style="background:#EDEAF7;margin-bottom:16px">📦 보관한 반이에요. 학생 화면에는 보이지 않고, 여기서 기록과 제출 폴더를 볼 수 있어요.<span class="grow"></span><button class="btn sm mint" data-act="unarchive-class" data-id="${c.id}">↩ 복원</button><button class="btn sm" data-act="purge-class" data-id="${c.id}">🗑 완전 삭제</button></div>`:''}
   <div class="stats" style="margin-bottom:20px">
     <div class="stat"><b>${studs.length}</b><span>참여 학생</span></div>
     <div class="stat"><b>${done}</b><span>끝까지 푼 학생</span></div>
