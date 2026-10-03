@@ -673,6 +673,9 @@ body{background-color:#F3EEFF}
 .cd b{font-size:11.5px;line-height:1.35;word-break:keep-all}
 /* 입장 화면의 소설 제목 */
 .sub-title{display:inline-block;font-family:var(--display);font-size:21px;line-height:1.3;color:var(--ink);margin-bottom:2px}
+/* 음식 가져오는 중 */
+.picker.busy .food{pointer-events:none;opacity:.55}
+.picker.busy .food.claiming{opacity:1;transform:scale(1.04);box-shadow:0 0 0 4px var(--sun),0 6px 0 var(--ink);animation:pulse .9s infinite}
 
 </style>
 </head>
@@ -779,6 +782,8 @@ const EMO_GUESS=[['떡볶|떡','🥘'],['김밥|주먹밥|밥','🍙'],['라면|
 function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(k).test(n))return e;return '🍽️'}
 
 /* ---------- 저장소 ---------- */
+/* 시간 제한이 있는 fetch: 구글이 멈춰 있으면 기다리지 않고 끊고 다시 시도 */
+function fetchT(url,opts={},ms=15000){const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);return fetch(url,{...opts,signal:ac.signal}).finally(()=>clearTimeout(t))}
 const Store=(()=>{
   let all={},ver=0,key='',me='',nm='',pollMs=3000,timer=null,pulling=false,online=true;
   const listeners=new Set();
@@ -804,7 +809,7 @@ const Store=(()=>{
   async function pull(){
     if(LOCAL||pulling)return;pulling=true;
     try{
-      const r=await (await fetch(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'})).json();
+      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'},15000)).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
       ks.forEach(p=>{if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
@@ -823,14 +828,17 @@ const Store=(()=>{
     const optimistic=o=>{if(o.op==='set')all[o.path]=clone(o.data);else if(o.op==='update')all[o.path]=merge(all[o.path]||{},clone(o.data));else if(o.op==='delete')delete all[o.path]};
     if(body.op!=='claim'){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
     let r;
+    // 음식 가져가기는 시간 초과 때 그냥 다시 보내면 두 번 가져갈 수 있어서, 다시 보내지 않고 부른 쪽이 확인
+    const tries=body.op==='claim'?1:3;
     for(let i=0;i<3;i++){
-      try{r=await (await fetch(API_URL,{method:'POST',body:JSON.stringify({...body,key})})).json();if(r.ok||r.error!=='busy')break}
-      catch(e){r={ok:false,error:'network'}}
+      try{r=await (await fetchT(API_URL,{method:'POST',body:JSON.stringify({...body,key})},20000)).json();if(r.ok||r.error!=='busy')break}
+      catch(e){r={ok:false,error:e&&e.name==='AbortError'?'timeout':'network'};if(i+1>=tries)break}
       await sleep(600+i*800);
     }
     if(r&&r.ok&&body.op==='claim'&&r.data)all[body.path]=r.data;
     if(!r||!r.ok){const err=new Error((r&&r.error)||'network');err.code=(r&&r.error)||'network';pull();throw err}
-    pull();return r;
+    // 저장 뒤 바로 다시 받지 않음 (요청 수 절반으로) — 다음 정기 확인 때 함께 받음
+    return r;
   }
   return{
     async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
@@ -1187,12 +1195,24 @@ function refreshPicker(){
   const pk=m.querySelector('.picker');if(pk)pk.scrollTop=scroll;
 }
 async function sPick(fid,btn){
-  if(ST.claiming||!ST.picking)return;ST.claiming=true;btn.style.transform='scale(.92)';
-  const f=menuMap()[fid];if(!f){ST.claiming=false;return}
-  let r=null;
-  try{r=await Store.claim('pantry/'+pantryId(),fid,+f.qty||1,{by:ST.key,name:ST.me.name,at:Date.now()})}catch(e){dbErr(e)}
+  if(ST.claiming||!ST.picking)return;
+  const f=menuMap()[fid];if(!f)return;
+  ST.claiming=true;
+  // 누르자마자 "가져오는 중…" 표시 (서버 답을 기다리는 동안 다른 음식은 못 누르게)
+  const pk=$('#picker .picker');if(pk)pk.classList.add('busy');btn.classList.add('claiming');
+  const hd=$('#picker .picker-hd .muted');if(hd)hd.innerHTML=`🍽️ <b>${esc(f.n)}</b> 가져오는 중… 잠시만요!`;
+  const cid=uid('k');const pid='pantry/'+pantryId();
+  let r=null,err=null;
+  try{r=await Store.claim(pid,fid,+f.qty||1,{by:ST.key,name:ST.me.name,at:Date.now(),cid})}catch(e){err=e}
+  if(!r&&err&&(err.code==='timeout'||err.code==='network')){
+    // 시간 초과: 서버에서 이미 가져갔는지 확인 (다시 보내면 두 개 가져갈 수 있어서)
+    await Store.refreshNow();syncS();
+    const l=[].concat(((S.pantry[pantryId()]||{}).taken||{})[fid]||[]);
+    if(l.some(x=>x&&x.cid===cid))r={ok:true,claimed:true};
+  }
   ST.claiming=false;syncS();
-  if(!r){btn.style.transform='';refreshPicker();return}
+  if(pk)pk.classList.remove('busy');btn.classList.remove('claiming');
+  if(!r){if(err)dbErr(err);refreshPicker();return}
   if(!r.claimed){toast('앗, 방금 다른 친구가 가져갔어요! 다른 메뉴를 골라요.');refreshPicker();return}
   const qid=ST.picking.qid;ST.picking.done=true;
   const m=$('#picker');
@@ -1245,8 +1265,12 @@ async function sSubmit(){
   const c=sCls();if(!c||!c.folderId)return;const f=S.folders[c.folderId];const me=ST.me;const sc=scoreOf(me);
   const data={folderId:c.folderId,classId:c.id,group:me.group,num:me.num,name:me.name,character:me.character,score:sc.score,correct:sc.correct,total:sQs().length,
     table:(me.table||[]).map(t=>({f:t.f,n:tableFood(t).n})),answers:me.answers,submittedAt:Date.now()};
-  try{await Store.set('submissions/'+c.folderId+'-'+ST.key,data)}catch(e){dbErr(e);return}
-  me.submittedAt=data.submittedAt;me.submittedFolder=c.folderId;await saveMe();
+  if(ST.submitting)return;ST.submitting=true;
+  // 누르자마자 "제출하는 중…" (두 번 누르지 않게)
+  const b=$('[data-sact="submit"]');const bt=b&&b.textContent;if(b){b.disabled=true;b.textContent='📨 제출하는 중… 잠시만요!'}
+  try{await Store.set('submissions/'+c.folderId+'-'+ST.key,data)}catch(e){ST.submitting=false;if(b){b.disabled=false;b.textContent=bt}dbErr(e);return}
+  ST.submitting=false;
+  me.submittedAt=data.submittedAt;me.submittedFolder=c.folderId;saveMe();   // 내 기록 저장은 뒤에서 (기다리지 않음)
   confetti();toast(`📁 ${f?f.name:''}에 제출했어요!`);sEnd();
 }
 const SA={

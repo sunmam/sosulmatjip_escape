@@ -547,6 +547,8 @@ const EMO_GUESS=[['떡볶|떡','🥘'],['김밥|주먹밥|밥','🍙'],['라면|
 function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(k).test(n))return e;return '🍽️'}
 
 /* ---------- 저장소 ---------- */
+/* 시간 제한이 있는 fetch: 구글이 멈춰 있으면 기다리지 않고 끊고 다시 시도 */
+function fetchT(url,opts={},ms=15000){const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);return fetch(url,{...opts,signal:ac.signal}).finally(()=>clearTimeout(t))}
 const Store=(()=>{
   let all={},ver=0,key='',me='',nm='',pollMs=3000,timer=null,pulling=false,online=true;
   const listeners=new Set();
@@ -572,7 +574,7 @@ const Store=(()=>{
   async function pull(){
     if(LOCAL||pulling)return;pulling=true;
     try{
-      const r=await (await fetch(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'})).json();
+      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'},15000)).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
       ks.forEach(p=>{if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
@@ -591,14 +593,17 @@ const Store=(()=>{
     const optimistic=o=>{if(o.op==='set')all[o.path]=clone(o.data);else if(o.op==='update')all[o.path]=merge(all[o.path]||{},clone(o.data));else if(o.op==='delete')delete all[o.path]};
     if(body.op!=='claim'){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
     let r;
+    // 음식 가져가기는 시간 초과 때 그냥 다시 보내면 두 번 가져갈 수 있어서, 다시 보내지 않고 부른 쪽이 확인
+    const tries=body.op==='claim'?1:3;
     for(let i=0;i<3;i++){
-      try{r=await (await fetch(API_URL,{method:'POST',body:JSON.stringify({...body,key})})).json();if(r.ok||r.error!=='busy')break}
-      catch(e){r={ok:false,error:'network'}}
+      try{r=await (await fetchT(API_URL,{method:'POST',body:JSON.stringify({...body,key})},20000)).json();if(r.ok||r.error!=='busy')break}
+      catch(e){r={ok:false,error:e&&e.name==='AbortError'?'timeout':'network'};if(i+1>=tries)break}
       await sleep(600+i*800);
     }
     if(r&&r.ok&&body.op==='claim'&&r.data)all[body.path]=r.data;
     if(!r||!r.ok){const err=new Error((r&&r.error)||'network');err.code=(r&&r.error)||'network';pull();throw err}
-    pull();return r;
+    // 저장 뒤 바로 다시 받지 않음 (요청 수 절반으로) — 다음 정기 확인 때 함께 받음
+    return r;
   }
   return{
     async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
@@ -1398,7 +1403,7 @@ function keyGate(msg=''){
 let tStarted=false;
 async function startTeacher(key){
   app.innerHTML=`<div class="home"><div class="home-in"><div class="spool">🍽️</div><div class="logo">소설 맛집</div><p class="muted" style="font-family:var(--ui)">불러오는 중…</p></div></div>`;
-  await Store.init({poll:2500,teacherKey:key});
+  await Store.init({poll:4000,teacherKey:key});   // 교사 화면 4초마다 (저장소 부담 줄이기)
   syncS();tRender();
   if(tStarted)return;tStarted=true;
   Store.on(()=>{syncS();tRender()});
