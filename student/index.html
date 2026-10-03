@@ -780,7 +780,7 @@ function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(
 
 /* ---------- 저장소 ---------- */
 const Store=(()=>{
-  let all={},ver=0,key='',pollMs=3000,timer=null,pulling=false,online=true;
+  let all={},ver=0,key='',me='',nm='',pollMs=3000,timer=null,pulling=false,online=true;
   const listeners=new Set();
   const notify=()=>listeners.forEach(f=>{try{f()}catch(e){console.error(e)}});
   const merge=(a,b)=>{for(const k in b){const x=a[k],y=b[k];if(y&&typeof y==='object'&&!Array.isArray(y)&&x&&typeof x==='object'&&!Array.isArray(x))merge(x,y);else a[k]=y}return a};
@@ -804,7 +804,7 @@ const Store=(()=>{
   async function pull(){
     if(LOCAL||pulling)return;pulling=true;
     try{
-      const r=await (await fetch(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):''),{cache:'no-store'})).json();
+      const r=await (await fetch(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'})).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
       ks.forEach(p=>{if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
@@ -835,6 +835,10 @@ const Store=(()=>{
   return{
     async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
     setKey(k){key=k},
+    /* 학생: 서버가 이 학생(번호+이름) 기록만 보내 주도록. 바뀌면 처음부터 다시 받음 */
+    setMe(k,n){if(k===me&&n===nm)return;me=k||'';nm=n||'';ver=0},
+    /* 진행 중인 받기가 끝날 때까지 기다렸다가 새로 받기 */
+    async refreshNow(){while(pulling)await sleep(80);await pull()},
     on(fn){listeners.add(fn);return()=>listeners.delete(fn)},
     doc(p){return clone(all[p])},
     peek(p){return all[p]},
@@ -854,7 +858,8 @@ async function checkTeacherKey(k){
 }
 function dbErr(e){
   const c=e&&e.code;
-  if(c==='teacher_only')toast('교사 비밀번호가 필요해요. 새로고침 후 다시 입력해 주세요.');
+  if(c==='name_taken')toast('이 번호는 다른 이름으로 이미 참여 중이에요. 번호를 확인해 주세요.');
+  else if(c==='teacher_only')toast('교사 비밀번호가 필요해요. 새로고침 후 다시 입력해 주세요.');
   else if(c==='too_big')toast('내용이 너무 길어서 저장하지 못했어요. (소설 본문을 줄이거나 사진을 작게)');
   else toast('저장하지 못했어요. 인터넷 연결을 확인해 주세요.');
   console.warn(e);
@@ -1058,10 +1063,12 @@ async function sJoin(){
   if(!name){toast('이름(닉네임)을 입력해 주세요.');return}
   if(!sNovel()){toast('선생님이 아직 이 반의 소설을 고르지 않았어요.');return}
   const btn=$('[data-sact="join"]');if(btn){btn.disabled=true;btn.textContent='입장하는 중…'}
-  await Store.refresh();syncS();
-  const key=c.id+'-'+c.novelId+'-'+num;const d=Store.doc('students/'+key);
+  const key=c.id+'-'+c.novelId+'-'+num;
+  // 서버에 "이 번호+이름의 기록"을 확실히 새로 받아 옴 (다른 학생 기록은 오지 않음)
+  Store.setMe(key,name);await Store.refreshNow();syncS();
+  const d=Store.doc('students/'+key);
   if(d){
-    if(d.name!==name){toast(`${num}번은 이미 다른 이름으로 참여 중이에요. 번호를 확인해 주세요.`);if(btn){btn.disabled=false;btn.textContent='입장하기 ▶'}return}
+    if(d._taken||d.name!==name){toast(`${num}번은 이미 다른 이름으로 참여 중이에요. 번호를 확인해 주세요.`);if(btn){btn.disabled=false;btn.textContent='입장하기 ▶'}return}
     ST.me=d;ST.me.answers=ST.me.answers||{};ST.me.group=ST.group;ST.me.character=ST.char;
   }else{
     ST.me={classId:c.id,novelId:c.novelId,group:ST.group,num,name,character:ST.char,answers:{},table:[],done:false,createdAt:Date.now()};
@@ -1294,7 +1301,7 @@ async function startStudent(lock){
   const saved=LS.get('alsE-me',{});if(saved.classId){ST.classId=saved.classId;ST.group=saved.group||null;ST.char=saved.char||0}
   if(lock&&saved.classId!==lock){ST.classId=lock;ST.group=null}
   app.innerHTML=`<div class="home"><div class="home-in"><div class="spool">${UI.emo}</div><div class="logo">${UI.logo}</div><p class="muted" style="font-family:var(--ui)">불러오는 중…</p></div></div>`;
-  await Store.init({poll:3000});
+  await Store.init({poll:5000});   // 학생 화면은 5초마다 확인 (음식 배정은 누르는 즉시 서버가 처리)
   syncS();ST.sig={};
   Store.on(onStoreChange);
   document.body.addEventListener('click',e=>{const b=e.target.closest('[data-sact]');if(!b)return;SA[b.dataset.sact]&&SA[b.dataset.sact](b,e)});
