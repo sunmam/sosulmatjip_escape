@@ -439,6 +439,8 @@ textarea.in{resize:vertical}
 .fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;font-size:18px;padding:12px 20px;border-radius:999px;box-shadow:4px 5px 0 var(--ink)}
 .qlist{padding-bottom:10px}
 .arc-row{padding:8px 10px;border:2px dashed rgba(28,26,59,.25);border-radius:12px;background:#F7F5FC;gap:6px 10px}
+.mc:nth-child(5) b{background:#E3D8FF}
+.mc-warn{font-family:var(--ui);font-size:13px;color:var(--pink-d);background:#FFF0F4;border:2px dashed var(--pink);border-radius:10px;padding:2px 8px;justify-self:start}
 
 /* ================= 소설 방탈출 ================= */
 body{background-color:#F3EEFF}
@@ -898,12 +900,16 @@ function avatar(i,cls=''){const c=charOf(i);return `<span class="av ${cls}" styl
 /* 학생에게 내는 순서 (소설마다 교사가 고름)
    level: 하→중→상, 같은 수준은 교사가 만든 순서 / levelMix: 하→중→상, 같은 수준 안에서 섞기 / all: 모든 문제 섞기
    섞을 때는 학생마다 다르게, 같은 학생은 다시 들어와도 같은 순서 */
-const ORDER_MODES={level:'하→중→상 순서대로',levelMix:'하→중→상 + 유형(OX·단답·선다) 섞기',all:'모든 문제 무작위'};
+const ORDER_MODES={level:'교사가 정한 순서대로 (문제 목록 순서)',levelMix:'하→중→상 수준 순서로, 학생마다 무작위',all:'수준 상관없이 학생마다 무작위'};
 function seededRand(seed){let h=1779033703^seed.length;for(let i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19}
   return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return (h>>>0)/4294967296}}
 function seededShuffle(a,rnd){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+/* 선다형 보기: 빈 칸은 빼고, 학생에게 보이는 번호(no)를 다시 매김. k는 원래 자리(정답 비교용) */
+function mcShown(q){let no=0;return (q.choices||[]).map((ch,k)=>({k,ch:String(ch||'').trim()})).filter(x=>x.ch).map(x=>({...x,no:++no}))}
+function mcButtons(q){return mcShown(q).map(x=>`<button class="mc" data-sact="ans" data-v="${x.k}"><b>${x.no}</b><span>${esc(x.ch)}</span></button>`).join('')}
 function orderedQs(novel,seed){
-  const base=(novel&&novel.questions||[]).map((q,i)=>({...q,_i:i})).sort((a,b)=>(LVI[a.level]??0)-(LVI[b.level]??0)||a._i-b._i);
+  // 기본: 교사가 문제 목록에 놓은 순서 그대로
+  const base=(novel&&novel.questions||[]).map((q,i)=>({...q,_i:i}));
   const mode=(novel&&novel.order)||'level';
   if(!seed||mode==='level')return base;
   const rnd=seededRand(String(seed));
@@ -1083,7 +1089,7 @@ function sPlay(trans){
   const qs=sQs();const no=qs.findIndex(x=>x.id===q.id)+1;
   const tr=trans||pick(TRANS);
   const ans=q.type==='ox'?`<div class="oxs"><button class="key o" data-sact="ans" data-v="O" aria-label="O">O</button><button class="key x" data-sact="ans" data-v="X" aria-label="X">X</button></div>`
-    :q.type==='mc'?(q.choices||[]).map((ch,k)=>`<button class="mc" data-sact="ans" data-v="${k}"><b>${k+1}</b><span>${esc(ch)}</span></button>`).join('')
+    :q.type==='mc'?mcButtons(q)
     :`<div class="shortbox"><textarea class="in" id="s-short" placeholder="${q.open?'내 생각을 한 문장으로 써 보세요':'정답을 입력하세요'}"></textarea><button class="btn tang" style="font-size:18px" data-sact="ans-short">제출하기</button></div>`;
   const t=tierFor(q);
   app.innerHTML=`<div class="sapp wide"><div class="play-grid"><div>${hud()}
@@ -1130,7 +1136,7 @@ async function sAnswer(v){
     ST.me.answers[q.id]={ok:false,tries:2,a:String(v),at:Date.now()};saveMe();
     await burst('pass','패스~','');
     ST.busy=false;ST.tries=0;
-    const right=q.type==='ox'?q.answer:q.type==='mc'?`${Number(q.answer)+1}번 ${(q.choices||[])[q.answer]||''}`:String(q.answer||'').split('/')[0];
+    const right=q.type==='ox'?q.answer:q.type==='mc'?(()=>{const r=mcShown(q).find(x=>x.k===Number(q.answer));return r?`${r.no}번 ${r.ch}`:'(정답 보기 없음)'})():String(q.answer||'').split('/')[0];
     const m=document.createElement('div');m.className='ov';
     m.innerHTML=`<div class="sheet" style="text-align:center"><h2>정답은…</h2><p style="font-family:var(--display);font-size:30px;margin:10px 0">${esc(right)}</p>${q.explain?`<p class="bubble" style="margin:10px 0">${esc(q.explain)}</p>`:''}<button class="btn tang" style="font-size:18px">${UI.next}</button></div>`;
     document.body.appendChild(m);$('button',m).onclick=()=>{m.remove();nextQ()};
@@ -1316,8 +1322,8 @@ const ROOMS=[
 const ROOM_NAMES=['분식 포차의 방','디저트 카페의 방','핫플 맛집의 방','셰프의 코스요리 방','전설의 만찬 방'];
 Object.assign(ST,{room:null,pos:{x:.5,y:.93},target:null,keys:{},face:1,moving:false,loopOn:false,lt:0,drag:false,curQ:null,qOpen:false,sayT:null,hitCool:0,moved:false});
 
-/* 방탈출은 늘 하→중→상 (무작위 설정이면 같은 수준 안에서만 섞음) */
-function sQs(){const n=sNovel();if(!n)return[];return orderedQs(n.order==='all'?{...n,order:'levelMix'}:n,ST.key)}
+/* 학생에게 내는 순서: 교사 순서 / 하→중→상 수준 안에서 학생마다 무작위 / 수준 상관없이 학생마다 무작위 */
+function sQs(){const n=sNovel();if(!n)return[];return orderedQs(n,ST.key)}
 function firstOpen(){const a=ST.me.answers||{};return sQs().find(q=>!a[q.id])}
 /* 지금 푸는 문제: 학생이 들어간 열쇠구멍, 없으면 아직 안 푼 첫 문제 */
 function sCur(){const a=ST.me.answers||{};if(ST.curQ){const q=sQs().find(x=>x.id===ST.curQ);if(q&&!a[q.id])return q}return firstOpen()}
@@ -1481,7 +1487,7 @@ function openQ(trans,instant,from){
   const q=sCur();if(!q)return;
   const all=sQs();const no=all.findIndex(x=>x.id===q.id)+1;const t=tierFor(q);
   const ans=q.type==='ox'?`<div class="oxs"><button class="key o" data-sact="ans" data-v="O" aria-label="O">O</button><button class="key x" data-sact="ans" data-v="X" aria-label="X">X</button></div>`
-    :q.type==='mc'?(q.choices||[]).map((ch,k)=>`<button class="mc" data-sact="ans" data-v="${k}"><b>${k+1}</b><span>${esc(ch)}</span></button>`).join('')
+    :q.type==='mc'?mcButtons(q)
     :`<div class="shortbox"><textarea class="in" id="s-short" placeholder="${q.open?'내 생각을 한 문장으로 써 보세요':'정답을 입력하세요'}"></textarea><button class="btn tang" style="font-size:18px" data-sact="ans-short">🔑 열쇠 넣기</button></div>`;
   const old=$('#qov');if(old)old.remove();
   const m=document.createElement('div');m.className='ov qov'+(instant?'':' zoomin');m.id='qov';

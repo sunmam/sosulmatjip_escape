@@ -439,6 +439,8 @@ textarea.in{resize:vertical}
 .fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;font-size:18px;padding:12px 20px;border-radius:999px;box-shadow:4px 5px 0 var(--ink)}
 .qlist{padding-bottom:10px}
 .arc-row{padding:8px 10px;border:2px dashed rgba(28,26,59,.25);border-radius:12px;background:#F7F5FC;gap:6px 10px}
+.mc:nth-child(5) b{background:#E3D8FF}
+.mc-warn{font-family:var(--ui);font-size:13px;color:var(--pink-d);background:#FFF0F4;border:2px dashed var(--pink);border-radius:10px;padding:2px 8px;justify-self:start}
 
 </style>
 </head>
@@ -666,12 +668,16 @@ function avatar(i,cls=''){const c=charOf(i);return `<span class="av ${cls}" styl
 /* 학생에게 내는 순서 (소설마다 교사가 고름)
    level: 하→중→상, 같은 수준은 교사가 만든 순서 / levelMix: 하→중→상, 같은 수준 안에서 섞기 / all: 모든 문제 섞기
    섞을 때는 학생마다 다르게, 같은 학생은 다시 들어와도 같은 순서 */
-const ORDER_MODES={level:'하→중→상 순서대로',levelMix:'하→중→상 + 유형(OX·단답·선다) 섞기',all:'모든 문제 무작위'};
+const ORDER_MODES={level:'교사가 정한 순서대로 (문제 목록 순서)',levelMix:'하→중→상 수준 순서로, 학생마다 무작위',all:'수준 상관없이 학생마다 무작위'};
 function seededRand(seed){let h=1779033703^seed.length;for(let i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19}
   return()=>{h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);h^=h>>>16;return (h>>>0)/4294967296}}
 function seededShuffle(a,rnd){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+/* 선다형 보기: 빈 칸은 빼고, 학생에게 보이는 번호(no)를 다시 매김. k는 원래 자리(정답 비교용) */
+function mcShown(q){let no=0;return (q.choices||[]).map((ch,k)=>({k,ch:String(ch||'').trim()})).filter(x=>x.ch).map(x=>({...x,no:++no}))}
+function mcButtons(q){return mcShown(q).map(x=>`<button class="mc" data-sact="ans" data-v="${x.k}"><b>${x.no}</b><span>${esc(x.ch)}</span></button>`).join('')}
 function orderedQs(novel,seed){
-  const base=(novel&&novel.questions||[]).map((q,i)=>({...q,_i:i})).sort((a,b)=>(LVI[a.level]??0)-(LVI[b.level]??0)||a._i-b._i);
+  // 기본: 교사가 문제 목록에 놓은 순서 그대로
+  const base=(novel&&novel.questions||[]).map((q,i)=>({...q,_i:i}));
   const mode=(novel&&novel.order)||'level';
   if(!seed||mode==='level')return base;
   const rnd=seededRand(String(seed));
@@ -1036,19 +1042,17 @@ function vQuestions(){
   if(!list.length)return `<div class="card">먼저 📚 소설 탭에서 소설을 추가하세요.</div>`;
   if(!T.novelId||!S.novels[T.novelId])T.novelId=list[0].id;
   const n=S.novels[T.novelId];const qs=n.questions||[];
-  // 목록은 늘 하→중→상으로 묶어서 보여 줌 (같은 수준 안은 교사가 정한 순서)
-  const disp=orderedQs(n);let lastLv=null;
-  const rows=disp.map((q,pos)=>{
-    const head=q.level!==lastLv?`<div class="lvhead"><span class="tag lv-${q.level}">${q.level}수준</span><span class="muted" style="font-family:var(--ui);font-size:14px">${disp.filter(x=>x.level===q.level).length}문제</span></div>`:'';lastLv=q.level;
-    return head+qRow(q,q._i,pos,disp);
-  }).join('');
+  // 목록은 교사가 놓은 순서 그대로 = 학생에게 나가는 순서 (▲▼로 바꾸기)
+  const disp=qs.map((q,i)=>({...q,_i:i}));
+  const cnt=l=>qs.filter(q=>q.level===l).length;
+  const rows=disp.map((q,pos)=>qRow(q,q._i,pos,disp)).join('');
   return `<div class="sec-h"><h2>문제 만들기</h2>
      <select class="in" style="width:auto" data-ch="q-novel">${list.map(x=>`<option value="${x.id}" ${x.id===T.novelId?'selected':''}>${esc(x.title)} · ${esc(x.author)}</option>`).join('')}</select>
-     <span class="muted">${qs.length}문제</span></div>
+     <span class="muted">${qs.length}문제 · ${LV.map(l=>`${l} ${cnt(l)}`).join(' · ')}</span></div>
    <div class="card row" style="margin-bottom:14px;padding:12px 14px;gap:8px 12px">
      <label class="row" style="gap:8px;font-family:var(--ui)">🔀 학생에게 내는 순서
        <select class="in" data-ch="q-order" style="width:auto">${Object.entries(ORDER_MODES).map(([k,l])=>`<option value="${k}" ${(n.order||'level')===k?'selected':''}>${l}</option>`).join('')}</select></label>
-     <span class="muted" style="font-size:13px">${(n.order||'level')==='level'?'아래 목록 순서 그대로 (하→중→상)':(n.order==='all'?'학생마다 모든 문제 순서가 달라요':'하→중→상은 지키고, 같은 수준 안에서 학생마다 순서가 달라요')}</span>
+     <span class="muted" style="font-size:13px">${(n.order||'level')==='level'?'아래 목록 순서 그대로 나가요 (▲▼로 순서 바꾸기)':(n.order==='all'?'수준과 상관없이 학생마다 모든 문제 순서가 달라요 (1번 방에 상 문제가 나올 수도 있어요)':'하 → 중 → 상 순서는 지키고, 같은 수준 안에서 학생마다 순서가 달라요')}</span>
    </div>
    <div class="qlist">${rows||'<div class="card muted">문제가 없어요. ＋ 문제 추가를 눌러 주세요.</div>'}</div>
    ${qs.length?`<div class="row" style="justify-content:center;margin-top:18px"><button class="btn tang" style="font-size:18px;padding:12px 26px" data-act="add-q">＋ 여기에 문제 추가 (Q${qs.length+1})</button></div>`:''}
@@ -1056,9 +1060,12 @@ function vQuestions(){
 }
 function qRow(q,i,pos,disp){
   const prev=disp[pos-1],next=disp[pos+1];
-  const up=prev&&prev.level===q.level?prev._i:-1,down=next&&next.level===q.level?next._i:-1;
+  const up=prev?prev._i:-1,down=next?next._i:-1;
+  /* 선다형: 보기 5개까지, 빈 보기는 학생에게 안 보임 */
+  const ch=q.choices||[];const filled=[0,1,2,3,4].filter(k=>String(ch[k]||'').trim());
+  const mcWarn=q.type!=='mc'?'':filled.length<2?'⚠️ 보기를 2개 이상 써 주세요':!String(ch[Number(q.answer)]||'').trim()?'⚠️ 정답으로 고른 보기가 비어 있어요':'';
   const ans=q.type==='ox'?`<div class="row oxpick"><span class="muted">정답</span><div class="seg"><button class="${q.answer==='O'?'on':''}" data-act="q-set" data-i="${i}" data-f="answer" data-v="O">O</button><button class="${q.answer==='X'?'on':''}" data-act="q-set" data-i="${i}" data-f="answer" data-v="X">X</button></div></div>`
-   :q.type==='mc'?`<div class="stack" style="gap:6px">${[0,1,2,3].map(k=>`<label class="mcopt"><input type="radio" name="mc-${i}" ${Number(q.answer)===k?'checked':''} data-ch="q-mcans" data-i="${i}" data-k="${k}" aria-label="${k+1}번을 정답으로"><input class="in" data-ch="q-choice" data-i="${i}" data-k="${k}" value="${esc((q.choices||[])[k]||'')}" placeholder="${k+1}번 보기"></label>`).join('')}<span class="muted" style="font-size:13px">동그라미를 눌러 정답 보기를 고르세요.</span></div>`
+   :q.type==='mc'?`<div class="stack" style="gap:6px">${[0,1,2,3,4].map(k=>`<label class="mcopt"><input type="radio" name="mc-${i}" ${Number(q.answer)===k?'checked':''} data-ch="q-mcans" data-i="${i}" data-k="${k}" aria-label="${k+1}번을 정답으로"><input class="in" data-ch="q-choice" data-i="${i}" data-k="${k}" value="${esc(ch[k]||'')}" placeholder="${k+1}번 보기${k>=3?' (선택)':''}"></label>`).join('')}<span class="muted" style="font-size:13px">동그라미를 눌러 정답 보기를 고르세요. 보기는 5개까지, 빈 보기는 학생에게 안 보여요.</span>${mcWarn?`<span class="mc-warn">${mcWarn}</span>`:''}</div>`
    :`<div class="stack" style="gap:6px"><label class="switch${q.open?' on':''}" data-act="q-open" data-i="${i}"><i></i>자신의 생각 쓰기 (문장을 쓰면 정답)</label>
       ${q.open?'':`<input class="in" data-ch="q-field" data-i="${i}" data-f="answer" value="${esc(q.answer||'')}" placeholder="정답 (여러 개면 / 로 구분: 닭싸움/닭쌈)">`}</div>`;
   return `<div class="qrow" data-qid="${esc(q.id||'')}">
@@ -1069,8 +1076,8 @@ function qRow(q,i,pos,disp){
         <div class="seg" role="group" aria-label="수준">${LV.map(l=>`<button class="${q.level===l?'on':''}" data-act="q-set" data-i="${i}" data-f="level" data-v="${l}">${l}</button>`).join('')}</div>
         <input class="in scene" data-ch="q-field" data-i="${i}" data-f="scene" value="${esc(q.scene||'')}" title="장면 그림 (이모지 1개)" aria-label="장면 그림 이모지">
         <span class="grow"></span>
-        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${up}" ${up<0?'disabled':''} aria-label="같은 수준에서 위로">▲</button>
-        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${down}" ${down<0?'disabled':''} aria-label="같은 수준에서 아래로">▼</button>
+        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${up}" ${up<0?'disabled':''} aria-label="위로">▲</button>
+        <button class="btn sm" data-act="q-move" data-i="${i}" data-j="${down}" ${down<0?'disabled':''} aria-label="아래로">▼</button>
         <button class="btn sm" data-act="q-del" data-i="${i}" data-n="${pos+1}">삭제</button>
       </div>
       <div class="stack" style="gap:8px">
@@ -1088,7 +1095,7 @@ function qMutate(fn,rerender=true){
   clearTimeout(qSaveT);const id=T.novelId;
   qSaveT=setTimeout(()=>tWrite(()=>Store.update('novels/'+id,{questions:S.novels[id].questions})),600);
 }
-function newQ(level='하'){return{id:uid('q'),level,type:'mc',q:'',choices:['','','',''],answer:0,scene:'',explain:''}}
+function newQ(level='하'){return{id:uid('q'),level,type:'mc',q:'',choices:['','','','',''],answer:0,scene:'',explain:''}}
 
 /* --- 활동 보드 --- */
 /* 지금 이 반에 걸린 소설의 기록만 (소설을 바꾸면 새로 시작, 예전 기록은 제출 폴더에 남음) */
@@ -1344,7 +1351,7 @@ function tChange(e){
   else if(k==='q-order'){const id=T.novelId,v=el.value;el.blur();S.novels[id].order=v;T.pending=false;tRender();
     tWrite(()=>Store.update('novels/'+id,{order:v}));toast('학생에게 내는 순서: '+ORDER_MODES[v])}
   else if(k==='q-field'){const i=+el.dataset.i;qMutate(a=>{a[i][el.dataset.f]=el.value},false)}
-  else if(k==='q-choice'){const i=+el.dataset.i,kk=+el.dataset.k;qMutate(a=>{a[i].choices=a[i].choices||['','','',''];a[i].choices[kk]=el.value},false)}
+  else if(k==='q-choice'){const i=+el.dataset.i,kk=+el.dataset.k;qMutate(a=>{a[i].choices=a[i].choices||['','','','',''];a[i].choices[kk]=el.value},e.type==='change')}
   else if(k==='q-mcans'){const i=+el.dataset.i;qMutate(a=>{a[i].answer=+el.dataset.k},false)}
   else if(k==='m-name'){const v=el.value.trim();if(v)menuMutate(items=>{const f=items.find(x=>x.id===id);if(f)f.n=v})}
   else if(k==='m-tier'){menuMutate(items=>{const f=items.find(x=>x.id===id);if(f)f.tier=+el.value})}
