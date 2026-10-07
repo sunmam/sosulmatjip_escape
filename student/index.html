@@ -806,13 +806,23 @@ const Store=(()=>{
     return{ok:true};
   }
   /* ---- 온라인: Apps Script ---- */
+  /* 저장 중인 문서 보호: 내가 바꾼 문서가 서버에 저장되기 전에 시작된 "받기"가
+     예전 내용을 들고 와서 화면을 되돌리지 않게 함 (－ 버튼을 빠르게 눌러도 그대로) */
+  // 저장 중(또는 저장 대기 중)인 항목은 서버의 예전 내용으로 덮어쓰지 않음
+  const pend={};                                   // path → {n:저장 중 개수, t:마지막 저장이 끝난 시각}
+  const dirty={};                                  // path → put으로 화면에만 바꾸고 아직 저장을 보내지 않음
+  const hold=p=>{delete dirty[p];(pend[p]=pend[p]||{n:0,t:0}).n++};
+  const release=p=>{const x=pend[p];if(x){x.n=Math.max(0,x.n-1);x.t=Date.now()}};
+  const isHeld=(p,t0)=>!!dirty[p]||(!!pend[p]&&(pend[p].n>0||t0<=pend[p].t));
   async function pull(){
     if(LOCAL||pulling)return;pulling=true;
+    const t0=Date.now();
     try{
       const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'},15000)).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
-      ks.forEach(p=>{if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
+      ks.forEach(p=>{if(isHeld(p,t0))return;if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
+      for(const p in pend)if(!pend[p].n&&Date.now()-pend[p].t>60000)delete pend[p];
       ver=Math.max(ver,r.ver||0);
       if(!online){online=true;setNet(true)}
       if(ks.length)notify();
@@ -826,6 +836,7 @@ const Store=(()=>{
     if(LOCAL){const res=body.op==='batch'?{ok:true,results:body.ops.map(applyLocal)}:applyLocal(body);lsave();notify();return res}
     // 먼저 화면에 반영(빠른 반응), 서버 결과로 다시 맞춤
     const optimistic=o=>{if(o.op==='set')all[o.path]=clone(o.data);else if(o.op==='update')all[o.path]=merge(all[o.path]||{},clone(o.data));else if(o.op==='delete')delete all[o.path]};
+    const held=body.op==='claim'?[]:(body.op==='batch'?body.ops:[body]).map(o=>o.path);held.forEach(hold);
     if(body.op!=='claim'){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
     let r;
     // 음식 가져가기는 시간 초과 때 그냥 다시 보내면 두 번 가져갈 수 있어서, 다시 보내지 않고 부른 쪽이 확인
@@ -836,6 +847,7 @@ const Store=(()=>{
       await sleep(600+i*800);
     }
     if(r&&r.ok&&body.op==='claim'&&r.data)all[body.path]=r.data;
+    held.forEach(release);   // 저장이 끝남 (성공·실패 모두) — 이후 받기부터는 서버 내용을 그대로 씀
     if(!r||!r.ok){const err=new Error((r&&r.error)||'network');err.code=(r&&r.error)||'network';pull();throw err}
     // 저장 뒤 바로 다시 받지 않음 (요청 수 절반으로) — 다음 정기 확인 때 함께 받음
     return r;
@@ -852,7 +864,7 @@ const Store=(()=>{
     peek(p){return all[p]},
     coll(prefix){const out={};const pre=prefix+'/';for(const p in all){if(p.startsWith(pre)&&p.indexOf('/',pre.length)<0)out[p.slice(pre.length)]=all[p]}return out},
     refresh:pull,
-    put(path,data){all[path]=clone(data);notify()},   // 화면에만 먼저 반영 (저장은 따로)
+    put(path,data){all[path]=clone(data);dirty[path]=true;notify()},   // 화면에만 먼저 반영 (저장은 따로, 저장 끝날 때까지 보호)
     set:(path,data)=>post({op:'set',path,data}),
     update:(path,data)=>post({op:'update',path,data}),
     del:path=>post({op:'delete',path}),
