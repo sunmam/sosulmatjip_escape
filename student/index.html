@@ -441,6 +441,9 @@ textarea.in{resize:vertical}
 .arc-row{padding:8px 10px;border:2px dashed rgba(28,26,59,.25);border-radius:12px;background:#F7F5FC;gap:6px 10px}
 .mc:nth-child(5) b{background:#E3D8FF}
 .mc-warn{font-family:var(--ui);font-size:13px;color:var(--pink-d);background:#FFF0F4;border:2px dashed var(--pink);border-radius:10px;padding:2px 8px;justify-self:start}
+/* 깜짝 교체 알림 (문제 창·식탁 위에도 보이게) */
+.swapov{z-index:76;animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.swap-hd{font-family:var(--display);font-size:clamp(26px,7vw,40px);color:#FFE27A;text-shadow:0 3px 0 rgba(0,0,0,.25)}
 
 /* ================= 소설 방탈출 ================= */
 body{background-color:#F3EEFF}
@@ -785,7 +788,7 @@ function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(
 /* 시간 제한이 있는 fetch: 구글이 멈춰 있으면 기다리지 않고 끊고 다시 시도 */
 function fetchT(url,opts={},ms=15000){const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);return fetch(url,{...opts,signal:ac.signal}).finally(()=>clearTimeout(t))}
 const Store=(()=>{
-  let all={},ver=0,key='',me='',nm='',pp='',pollMs=3000,timer=null,pulling=false,online=true;
+  let all={},ver=0,key='',me='',nm='',pp='',lite=false,pollMs=3000,timer=null,pulling=false,online=true,fails=0;
   const vers={};                                   // path → 서버에서 받은 문서 버전 (같은 버전은 다시 반영하지 않음)
   const listeners=new Set();
   const notify=()=>listeners.forEach(f=>{try{f()}catch(e){console.error(e)}});
@@ -820,21 +823,22 @@ const Store=(()=>{
     if(LOCAL||pulling)return;pulling=true;
     const t0=Date.now();
     try{
-      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):'')+(pp?'&pp='+encodeURIComponent(pp):''),{cache:'no-store'},15000)).json();
+      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):'')+(pp?'&pp='+encodeURIComponent(pp):'')+(lite&&!ver&&!me?'&lite=1':''),{cache:'no-store'},15000)).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
       const vs=r.vers||{};let n=0;
-      ks.forEach(p=>{if(isHeld(p,t0))return;if(vs[p]!==undefined&&vers[p]===vs[p]&&p in all===(r.docs[p]!==null))return;
+      ks.forEach(p=>{if(isHeld(p,t0))return;if(vs[p]!==undefined&&vers[p]===vs[p]&&p in all===(r.docs[p]!==null)&&!(all[p]&&all[p]._stub))return;
         if(vs[p]!==undefined)vers[p]=vs[p];if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p];n++});
       for(const p in pend)if(!pend[p].n&&Date.now()-pend[p].t>60000)delete pend[p];
       ver=r.ver||ver;   // 서버가 알려 준 "이번 받기 시각" (다음엔 그 뒤에 바뀐 것만)
-      if(!online){online=true;setNet(true)}
+      fails=0;if(!online){online=true;setNet(true)}
       if(n)notify();
-    }catch(e){if(online){online=false;setNet(false)}console.warn(e)}
+    }catch(e){fails++;if(online&&fails>=2){online=false;setNet(false)}console.warn(e)}   // 한 번 실패는 조용히 다시 (두 번 연속일 때만 알림)
     finally{pulling=false}
   }
   function setNet(ok){const d=$('#netdot');if(d)d.hidden=ok;if(!ok)toast('서버와 연결이 불안정해요. 잠시 후 자동으로 다시 이어져요.')}
-  function loop(){clearTimeout(timer);timer=setTimeout(async()=>{await pull();loop()},document.hidden?Math.max(pollMs*4,12000):pollMs)}
+  /* 받기에 실패하면 30초를 기다리지 않고 3~6초 뒤(흩어서) 다시 */
+  function loop(){clearTimeout(timer);timer=setTimeout(async()=>{await pull();loop()},fails?3000+Math.random()*3000:document.hidden?Math.max(pollMs*4,12000):pollMs)}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!LOCAL){pull();loop()}});
   async function post(body){
     if(LOCAL){const res=body.op==='batch'?{ok:true,results:body.ops.map(applyLocal)}:applyLocal(body);lsave();notify();return res}
@@ -849,7 +853,7 @@ const Store=(()=>{
     for(let i=0;i<3;i++){
       try{r=await (await fetchT(API_URL,{method:'POST',body:JSON.stringify({...body,key})},20000)).json();if(r.ok||r.error!=='busy')break}
       catch(e){r={ok:false,error:e&&e.name==='AbortError'?'timeout':'network'};if(i+1>=tries)break}
-      await sleep(600+i*800);
+      await sleep(1000*(i+1)+Math.random()*1500);   // 서버가 바쁠 때 모두가 한꺼번에 다시 보내지 않게 (흩어서)
     }
     if(r&&r.ok&&grab&&r.data){all[body.path]=r.data;notify()}
     held.forEach(release);   // 저장이 끝남 (성공·실패 모두) — 이후 받기부터는 서버 내용을 그대로 씀
@@ -858,10 +862,11 @@ const Store=(()=>{
     return r;
   }
   return{
-    async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
+    /* lite: 학생 첫 화면 — 서버가 미리 묶어 둔 공용 묶음(반·소설·메뉴판)만 받음 */
+    async init({poll=3000,teacherKey='',lite:l=false}={}){pollMs=poll;key=teacherKey;lite=l;if(LOCAL){all=lload();return}await pull();loop()},
     setKey(k){key=k},
     /* 학생: 서버가 이 학생(번호+이름) 기록만 보내 주도록. 바뀌면 처음부터 다시 받음 */
-    setMe(k,n,p){if(p!==undefined)pp=p||'';if(k===me&&n===nm)return;me=k||'';nm=n||'';ver=0},
+    setMe(k,n,p,keep){if(p!==undefined)pp=p||'';if(k===me&&n===nm)return;me=k||'';nm=n||'';if(!keep)ver=0},
     /* 확인 간격 바꾸기 (음식 고르는 동안만 자주) */
     setPoll(ms){if(ms===pollMs)return;pollMs=ms;if(timer&&!LOCAL)loop()},
     /* 진행 중인 받기가 끝날 때까지 기다렸다가 새로 받기 */
@@ -878,7 +883,11 @@ const Store=(()=>{
     batch:ops=>post({op:'batch',ops}),
     claim:(path,food,qty,entry)=>post({op:'claim',path,food,qty,entry}),
     /* 음식 가져가기 + 가져오면 내 기록(spath)도 sdata로 저장. 같은 cid로 다시 보내도 한 번만 가져감 */
-    pick:(path,food,qty,entry,spath,sdata)=>post({op:'pick',path,food,qty,entry,spath,sdata})
+    pick:(path,food,qty,entry,spath,sdata)=>post({op:'pick',path,food,qty,entry,spath,sdata}),
+    /* 학생 입장: 내 기록에 합쳐 저장하고, 합친 기록을 돌려받음 (요청 한 번) */
+    join:(path,data,pantry)=>post({op:'update',path,data,ret:1,pp:pantry}),
+    /* 서버가 다른 요청의 답으로 보내 준 문서를 넣기 (입장 때 우리 모둠 음식 칸) */
+    inject(path,doc){if(doc==null||dirty[path]||(pend[path]&&pend[path].n))return;all[path]=doc;notify()}
   };
 })();
 async function checkTeacherKey(k){
@@ -1031,9 +1040,10 @@ function pantryId(){return ST.classId+'-'+ST.me.novelId+'-'+ST.me.group}
 function pantryTaken(){return((S.pantry[pantryId()]||{}).taken)||{}}
 function takenN(t,id){const l=t[id];return Array.isArray(l)?l.length:(l?1:0)}
 function leftOf(f,t){return Math.max(0,(+f.qty||0)-takenN(t,f.id))}
+/* 내 기록 저장: 보내는 순간의 기록을 보냄 (앞의 저장이 끝나길 기다리는 사이 바뀐 것까지 함께) */
 function saveMe(){
-  const me=ST.me;me.updatedAt=Date.now();const data=clone(me);
-  ST.saving=ST.saving.then(()=>Store.set('students/'+ST.key,data)).catch(dbErr);return ST.saving;
+  const me=ST.me,key=ST.key;
+  ST.saving=ST.saving.then(()=>{if(ST.me!==me)return;me.updatedAt=Date.now();return Store.set('students/'+key,clone(me))}).catch(dbErr);return ST.saving;
 }
 function sRender(){
   if(ST.view==='login')return sLogin();
@@ -1093,18 +1103,25 @@ async function sJoin(){
   if(!sNovel()){toast('선생님이 아직 이 반의 소설을 고르지 않았어요.');return}
   const btn=$('[data-sact="join"]');if(btn){btn.disabled=true;btn.textContent='입장하는 중…'}
   const key=c.id+'-'+c.novelId+'-'+num;
-  // 서버에 "이 번호+이름의 기록"을 확실히 새로 받아 옴 (다른 학생 기록은 오지 않음)
-  Store.setMe(key,name,'pantry/'+c.id+'-'+c.novelId+'-'+ST.group);await Store.refreshNow();syncS();
-  const d=Store.doc('students/'+key);
-  if(d){
-    if(d._taken||d.name!==name){toast(`${num}번은 이미 다른 이름으로 참여 중이에요. 번호를 확인해 주세요.`);if(btn){btn.disabled=false;btn.textContent='입장하기 ▶'}return}
-    ST.me=d;ST.me.answers=ST.me.answers||{};ST.me.group=ST.group;ST.me.character=ST.char;
-  }else{
-    ST.me={classId:c.id,novelId:c.novelId,group:ST.group,num,name,character:ST.char,answers:{},table:[],done:false,createdAt:Date.now()};
-  }
-  ST.me.novelId=c.novelId;
+  const pp='pantry/'+c.id+'-'+c.novelId+'-'+ST.group;
+  const back=msg=>{if(msg)toast(msg);if(btn){btn.disabled=false;btn.textContent='입장하기 ▶'}};
+  const taken=`${num}번은 이미 다른 이름으로 참여 중이에요. 번호를 확인해 주세요.`;
+  // 입장은 요청 한 번: 서버가 "이 번호+이름의 기록"에 합쳐 저장하고, 합친 기록(이어 풀기)을 돌려줌
+  const base={classId:c.id,novelId:c.novelId,group:ST.group,num,name,character:ST.char};
+  Store.setMe(key,name,pp,true);
+  let d=null;
+  try{
+    const r=await Store.join('students/'+key,base,pp);d=r&&r.data;
+    // 입장 답에 함께 온 우리 반 소설·메뉴판·모둠 음식 칸 넣기
+    if(r&&r.docs)Object.keys(r.docs).forEach(p=>Store.inject(p,r.docs[p]));else if(r&&r.pantry)Store.inject(pp,r.pantry);
+    if(!d){Store.setMe('','',pp,true);Store.setMe(key,name,pp);await Store.refreshNow();d=Store.doc('students/'+key)}   // 예전 서버면 받아 오기
+    syncS();
+    if(sNovel()&&sNovel()._stub){Store.setMe('','',pp,true);Store.setMe(key,name,pp);await Store.refreshNow();syncS()}   // 소설 본문이 아직 없으면 받아 오기
+  }catch(e){return back(e.code==='name_taken'?taken:'입장하지 못했어요. 잠시 후 다시 눌러 주세요.')}
+  if(d&&(d._taken||d.name!==name))return back(taken);
+  ST.me={answers:{},table:[],done:false,createdAt:Date.now(),...(d||{}),...base};
+  ST.me.answers=ST.me.answers||{};ST.me.table=ST.me.table||[];
   ST.key=key;LS.set('alsE-me',{classId:c.id,num,name,group:ST.group,char:ST.char});
-  saveMe();
   ST.view=sCur()?(Object.keys(ST.me.answers).length?'play':'intro'):'end';
   sRender();
   if(ST.view==='play'&&ST.me.pendingPick)openPicker();
@@ -1161,8 +1178,8 @@ async function sAnswer(v){
   if(ok){
     ST.me.answers[q.id]={ok:true,tries:ST.tries,a:String(v),at:Date.now(),lv:q.level};
     const hasFood=anyFoodLeft();
-    if(hasFood)ST.me.pendingPick=q.id;
-    saveMe();
+    // 음식을 고를 땐 음식과 함께 한 번에 저장 (요청 수 줄이기), 음식이 없으면 바로 저장
+    if(hasFood)ST.me.pendingPick=q.id;else saveMe();
     await burst('','정답!',`+${qPoints(q.level,ST.tries)}점`);
     ST.busy=false;ST.tries=0;
     if(hasFood)openPicker();else{toast('모둠 메뉴가 모두 소진됐어요! 다음 문제로!');nextQ()}
@@ -1193,8 +1210,8 @@ function pickTier(q){
   for(let d=1;d<5;d++){if(tier+d<5&&left(tier+d))return tier+d;if(tier-d>=0&&left(tier-d))return tier-d}
   return tier;
 }
-/* 음식 고르는 동안만 모둠 음식 칸을 자주(2초) 확인 + 메뉴판을 열자마자 최신 개수 받기, 평소에는 10초 */
-function pickPoll(on){Store.setPoll(on?2000:10000);if(on)Store.refresh()}
+/* 메뉴판을 열자마자 우리 모둠 음식 칸 최신 개수 한 번 받기 (그 밖에는 30초마다 확인 — 90명이 써도 구글 서버가 버티게) */
+function pickPoll(on){if(on)Store.refresh()}
 function openPicker(){pickPoll(true);
   const qid=ST.me.pendingPick;const q=sQs().find(x=>x.id===qid)||{id:qid};
   ST.picking={qid,tier:pickTier(q)};
@@ -1217,36 +1234,79 @@ function refreshPicker(){
       ${foodPic(f)}<span>${esc(f.n)}</span>${(+f.qty||0)>1&&l?`<span class="left">${l}개 남음</span>`:''}${!l&&who.length?`<span class="who">${esc(who.slice(-2).join(', '))}</span>`:''}</button>`}).join('')}</div></div>`;
   const pk=m.querySelector('.picker');if(pk)pk.scrollTop=scroll;
 }
-/* 음식 고르기: 누르는 즉시 음식이 뜨고(기다리지 않음), 서버 확인(가져가기+내 식탁 저장 한 번에)은 뒤에서.
-   혹시 친구가 한 발 먼저 가져갔으면 그때 다시 고르게 함 */
+/* 음식 고르기 (구글 서버는 한 번 오가는 데 2~3초, 바쁠 땐 더 걸려서 학생은 기다리지 않게):
+   - 누르는 즉시 음식이 뜨고, "차리기"를 누르면 바로 식탁에 올라감
+   - 서버 확인(가져가기+내 식탁 저장 한 번에)은 뒤에서. 연결이 잠깐 끊겨도 같은 요청(cid)으로 다시 보냄 — 서버가 한 번만 가져감
+   - 친구가 한 발 먼저 가져갔으면: 이미 식탁에 올렸으면 비슷한 음식으로 알아서 바꿔 차리고 알려 줌,
+     아직 안 올렸으면 메뉴판으로 돌아가 다시 고름 */
+function altFood(curId,taken){
+  const cur=menuMap()[curId]||{};const tier=cur.tier||0;
+  const c=menuItems().filter(x=>x.id!==curId&&(+x.qty||0)>0&&leftOf(x,taken)>0);
+  c.sort((a,b)=>Math.abs((a.tier||0)-tier)-Math.abs((b.tier||0)-tier)||Math.random()-.5);
+  return c[0]||null;
+}
+/* 받침에 맞는 조사: josa('떡볶이','은','는') → '떡볶이는' */
+function josa(w,a,b){w=String(w||'');const c=w.charCodeAt(w.length-1)-0xAC00;return w+((c>=0&&c<=11171&&c%28)?a:b)}
+/* 친구가 한 발 먼저 가져가서 다른 음식으로 바꿔 차렸을 때: 화면 가운데에 "깜짝 교체" 이벤트로 크게 (어느 화면 위에서든) */
+function swapPop(oldN,alt){
+  const p=$('#swapov');if(p)p.remove();
+  const m=document.createElement('div');m.className='ov swapov';m.id='swapov';
+  m.innerHTML=`<button class="dishzoom"><div class="swap-hd">🎉 셰프의 깜짝 교체!</div><div class="bigdish">${foodPic({...alt,img:foodSrc(alt)})}</div><div class="bigname">${esc(alt.n)}</div>
+    <div class="bigdesc">${esc(josa(oldN,'은','는'))} 친구가 한 발 먼저 가져갔어요.<br>대신 <b>${esc(josa(alt.n,'이','가'))}</b> 내 식탁에 올라갔어요!</div><div class="tap">👆 눌러서 계속하기</div></button>`;
+  m.onclick=()=>m.remove();document.body.appendChild(m);
+  setTimeout(()=>{if(m.isConnected)m.remove()},4500);
+}
 async function sPick(fid,btn){
   if(ST.claiming||!ST.picking||ST.picking.done)return;
-  const f=menuMap()[fid];if(!f)return;
-  if(leftOf(f,pantryTaken())<=0){toast('앗, 방금 다른 친구가 가져갔어요! 다른 메뉴를 골라요.');refreshPicker();return}
+  const f0=menuMap()[fid];if(!f0)return;
+  if(leftOf(f0,pantryTaken())<=0){toast('앗, 방금 다른 친구가 가져갔어요! 다른 메뉴를 골라요.');refreshPicker();return}
   ST.claiming=true;
   const qid=ST.picking.qid;ST.picking.done=true;
-  const cid=uid('k');const pid='pantry/'+pantryId();
-  const after=clone(ST.me);after.table=[...(after.table||[]),{f:f.id,q:qid,n:f.n}];delete after.pendingPick;after.updatedAt=Date.now();
-  const entry={by:ST.key,name:ST.me.name,at:Date.now(),cid};
-  // 연결이 잠깐 끊겨도 같은 요청(cid)으로 다시 보냄 — 서버가 한 번만 가져감
-  const send=async()=>{let e;for(let i=0;i<4;i++){try{return{r:await Store.pick(pid,fid,+f.qty||1,entry,'students/'+ST.key,after)}}catch(x){e=x;if(!/timeout|network|busy/.test(x.code||''))break;await sleep(1000+i*1500)}}return{e}};
-  const job=ST.saving.then(send);ST.saving=job.then(()=>{});
+  const pid='pantry/'+pantryId();const key=ST.key;const me=ST.me;
+  const dishE={f:f0.id,q:qid,n:f0.n,cid:uid('k')};
+  let placed=false,swaps=0,lastRes=null;
+  // 보낼 때의 내 기록 + 이 음식 (그사이 다른 음식이 빠지거나 더해져도 화면과 똑같이)
+  const sdata=()=>{const d=clone(me);d.table=(d.table||[]).filter(t=>t.cid!==dishE.cid).concat([clone(dishE)]);if(d.pendingPick===qid)delete d.pendingPick;d.updatedAt=Date.now();return d};
+  const send=async f=>{let e;const entry={by:key,name:me.name,at:Date.now(),cid:dishE.cid};
+    for(let i=0;i<4;i++){try{return{r:await Store.pick(pid,f.id,+f.qty||1,entry,'students/'+key,sdata())}}catch(x){e=x;if(!/timeout|network|busy/.test(x.code||''))break;await sleep(1500*(i+1)+Math.random()*2000)}}return{e}};
   const m=$('#picker');
-  m.innerHTML=`<button class="reveal" id="reveal"><div class="rays"></div><div class="bigdish">${foodPic({...f,img:foodSrc(f)})}</div><div class="bigname">${esc(f.n)}</div>${f.d?`<div class="bigdesc">${esc(f.d)}</div>`:''}<div class="tap">👆 눌러서 내 식탁에 차리기</div></button>`;
-  confetti();
-  let res=null,tapped=false;
-  const place=()=>{ST.claiming=false;ST.me.table=after.table;delete ST.me.pendingPick;placeFood(f,qid,m,true)};
-  const fail=()=>{
+  const fail=x=>{
     ST.claiming=false;syncS();
-    if(res.r)toast('앗, 한 발 늦었어요! 친구가 먼저 가져갔어요. 다른 메뉴를 골라요.');else dbErr(res.e);
+    if(x.r)toast('앗, 한 발 늦었어요! 친구가 먼저 가져갔어요. 다른 메뉴를 골라요.');else dbErr(x.e);
+    if(ST.me!==me)return;
+    if(placed){
+      me.table=(me.table||[]).filter(t=>t!==dishE);me.pendingPick=qid;refreshTableViews();
+      const ts=$('#tblsheet');if(ts)ts.remove();
+      if(!ST.picking)openPicker();
+      return;
+    }
     if(!ST.picking||!$('#picker'))return;
     ST.picking.done=false;refreshPicker();
   };
-  job.then(x=>{res=x;if(!(x.r&&x.r.claimed))fail();else if(tapped)place()});
+  const onRes=x=>{
+    lastRes=x;
+    if(x.r&&x.r.claimed)return;
+    if(ST.me!==me)return;
+    if(placed&&x.r&&swaps<3){
+      const alt=altFood(dishE.f,(x.r.data&&x.r.data.taken)||pantryTaken());
+      if(alt){
+        swaps++;const old=dishE.n;dishE.f=alt.id;dishE.n=alt.n;dishE.cid=uid('k');
+        refreshTableViews();if($("#tblsheet"))showTable(true);   // 열려 있는 식탁 창도 바뀐 음식으로
+        swapPop(old,alt);
+        go(alt);return;
+      }
+    }
+    fail(x);
+  };
+  // 결과 처리를 먼저 걸어 두어야, 실패했을 때 다음 저장이 바뀐 기록으로 나감
+  const go=f=>{const job=ST.saving.then(()=>send(f));job.then(onRes);ST.saving=job.then(()=>{})};
+  go(f0);
+  m.innerHTML=`<button class="reveal" id="reveal"><div class="rays"></div><div class="bigdish">${foodPic({...f0,img:foodSrc(f0)})}</div><div class="bigname">${esc(f0.n)}</div>${f0.d?`<div class="bigdesc">${esc(f0.d)}</div>`:''}<div class="tap">👆 눌러서 내 식탁에 차리기</div></button>`;
+  confetti();
   $('#reveal').onclick=()=>{
-    if(tapped||(res&&!(res.r&&res.r.claimed)))return;tapped=true;
-    if(res)place();
-    else{const t=$('#reveal .tap');if(t)t.textContent='🍽️ 식탁에 차리는 중…'}
+    if(placed||(lastRes&&!(lastRes.r&&lastRes.r.claimed)))return;placed=true;
+    ST.claiming=false;me.table=[...(me.table||[]),dishE];if(me.pendingPick===qid)delete me.pendingPick;
+    placeFood(f0,qid,m,true);
   };
 }
 function placeFood(f,qid,m,saved){
@@ -1355,7 +1415,7 @@ async function startStudent(lock){
   const saved=LS.get('alsE-me',{});if(saved.classId){ST.classId=saved.classId;ST.group=saved.group||null;ST.char=saved.char||0}
   if(lock&&saved.classId!==lock){ST.classId=lock;ST.group=null}
   app.innerHTML=`<div class="home"><div class="home-in"><div class="spool">${UI.emo}</div><div class="logo">${UI.logo}</div><p class="muted" style="font-family:var(--ui)">불러오는 중…</p></div></div>`;
-  await Store.init({poll:10000});   // 학생 화면은 10초마다 확인 (음식 고르는 동안만 2초) — 100명이 써도 서버가 버티게
+  await Store.init({poll:30000,lite:true});   // 학생 화면은 30초마다 확인 (메뉴판 열 때 한 번 더) — 90명이 써도 서버가 버티게
   syncS();ST.sig={};
   Store.on(onStoreChange);
   document.body.addEventListener('click',e=>{const b=e.target.closest('[data-sact]');if(!b)return;SA[b.dataset.sact]&&SA[b.dataset.sact](b,e)});
