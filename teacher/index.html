@@ -318,7 +318,7 @@ textarea.in{resize:vertical}
 .burst{position:fixed;inset:0;z-index:70;display:grid;place-items:center;pointer-events:none}
 .burst .star{width:min(80vw,340px);aspect-ratio:1;display:grid;place-items:center;background:var(--sun);border:0;
   clip-path:polygon(50% 0,61% 22%,85% 10%,78% 36%,100% 45%,79% 58%,90% 84%,63% 76%,50% 100%,37% 76%,10% 84%,21% 58%,0 45%,22% 36%,15% 10%,39% 22%);
-  animation:burst .9s cubic-bezier(.2,1.5,.4,1) both;filter:drop-shadow(0 0 0 var(--ink))}
+  animation:burst .7s cubic-bezier(.2,1.5,.4,1) both;filter:drop-shadow(0 0 0 var(--ink))}
 .burst .star span{font-family:var(--display);font-size:clamp(40px,12vw,64px);color:var(--ink);transform:rotate(-8deg);text-align:center;line-height:1}
 .burst .star small{display:block;font-size:.45em;color:var(--tang-d)}
 .burst.retry .star{background:#C8DEFF}
@@ -347,7 +347,7 @@ textarea.in{resize:vertical}
 .bigname{font-family:var(--display);font-size:clamp(30px,9vw,44px);color:var(--sun);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 4px 0 var(--ink)}
 .bigdesc{font-family:var(--ui);font-size:17px;background:#fff;color:var(--ink);border:2.5px solid var(--ink);border-radius:14px;padding:6px 14px}
 .tap{font-family:var(--ui);font-size:15px;animation:pulse 1.2s infinite}
-.flyer{position:fixed;z-index:80;width:140px;pointer-events:none;transition:transform .75s cubic-bezier(.5,-0.3,.4,1),opacity .75s}
+.flyer{position:fixed;z-index:80;width:140px;pointer-events:none;transition:transform .5s cubic-bezier(.5,-0.3,.4,1),opacity .5s}
 .sheet{background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:8px 10px 0 var(--ink);width:min(560px,100%);padding:16px;animation:pop .35s cubic-bezier(.2,1.4,.4,1);max-height:calc(100% - 10px);overflow:auto}
 .sheet h2{font-size:26px;text-align:center}
 .upg{position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:75;pointer-events:none;background:var(--grape);color:#fff;font-family:var(--display);font-size:26px;border:3px solid var(--ink);border-radius:16px;padding:8px 18px;box-shadow:5px 6px 0 var(--ink);animation:upg 2.2s ease both;text-align:center;white-space:nowrap}
@@ -550,7 +550,8 @@ function guessEmoji(n){n=String(n||'');for(const[k,e]of EMO_GUESS)if(new RegExp(
 /* 시간 제한이 있는 fetch: 구글이 멈춰 있으면 기다리지 않고 끊고 다시 시도 */
 function fetchT(url,opts={},ms=15000){const ac=new AbortController();const t=setTimeout(()=>ac.abort(),ms);return fetch(url,{...opts,signal:ac.signal}).finally(()=>clearTimeout(t))}
 const Store=(()=>{
-  let all={},ver=0,key='',me='',nm='',pollMs=3000,timer=null,pulling=false,online=true;
+  let all={},ver=0,key='',me='',nm='',pp='',pollMs=3000,timer=null,pulling=false,online=true;
+  const vers={};                                   // path → 서버에서 받은 문서 버전 (같은 버전은 다시 반영하지 않음)
   const listeners=new Set();
   const notify=()=>listeners.forEach(f=>{try{f()}catch(e){console.error(e)}});
   const merge=(a,b)=>{for(const k in b){const x=a[k],y=b[k];if(y&&typeof y==='object'&&!Array.isArray(y)&&x&&typeof x==='object'&&!Array.isArray(x))merge(x,y);else a[k]=y}return a};
@@ -563,6 +564,7 @@ const Store=(()=>{
     if(op.op==='set')all[op.path]=clone(op.data);
     else if(op.op==='update')all[op.path]=merge(all[op.path]||{},clone(op.data));
     else if(op.op==='delete')delete all[op.path];
+    else if(op.op==='pick'){const r=applyLocal({...op,op:'claim'});if(r.claimed&&op.sdata)all[op.spath]=clone(op.sdata);return r}
     else if(op.op==='claim'){
       const d=all[op.path]||{taken:{}};d.taken=d.taken||{};let l=d.taken[op.food];l=Array.isArray(l)?l:(l?[l]:[]);
       if(l.length>=op.qty)return{ok:true,claimed:false,data:d};
@@ -583,14 +585,16 @@ const Store=(()=>{
     if(LOCAL||pulling)return;pulling=true;
     const t0=Date.now();
     try{
-      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):''),{cache:'no-store'},15000)).json();
+      const r=await (await fetchT(API_URL+'?op=pull&since='+ver+(key?'&key='+encodeURIComponent(key):'')+(me?'&me='+encodeURIComponent(me)+'&nm='+encodeURIComponent(nm):'')+(pp?'&pp='+encodeURIComponent(pp):''),{cache:'no-store'},15000)).json();
       if(!r.ok)throw new Error(r.error||'pull');
       const ks=Object.keys(r.docs||{});
-      ks.forEach(p=>{if(isHeld(p,t0))return;if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p]});
+      const vs=r.vers||{};let n=0;
+      ks.forEach(p=>{if(isHeld(p,t0))return;if(vs[p]!==undefined&&vers[p]===vs[p]&&p in all===(r.docs[p]!==null))return;
+        if(vs[p]!==undefined)vers[p]=vs[p];if(r.docs[p]===null)delete all[p];else all[p]=r.docs[p];n++});
       for(const p in pend)if(!pend[p].n&&Date.now()-pend[p].t>60000)delete pend[p];
-      ver=Math.max(ver,r.ver||0);
+      ver=r.ver||ver;   // 서버가 알려 준 "이번 받기 시각" (다음엔 그 뒤에 바뀐 것만)
       if(!online){online=true;setNet(true)}
-      if(ks.length)notify();
+      if(n)notify();
     }catch(e){if(online){online=false;setNet(false)}console.warn(e)}
     finally{pulling=false}
   }
@@ -601,17 +605,18 @@ const Store=(()=>{
     if(LOCAL){const res=body.op==='batch'?{ok:true,results:body.ops.map(applyLocal)}:applyLocal(body);lsave();notify();return res}
     // 먼저 화면에 반영(빠른 반응), 서버 결과로 다시 맞춤
     const optimistic=o=>{if(o.op==='set')all[o.path]=clone(o.data);else if(o.op==='update')all[o.path]=merge(all[o.path]||{},clone(o.data));else if(o.op==='delete')delete all[o.path]};
-    const held=body.op==='claim'?[]:(body.op==='batch'?body.ops:[body]).map(o=>o.path);held.forEach(hold);
-    if(body.op!=='claim'){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
+    const grab=body.op==='claim'||body.op==='pick';
+    const held=grab?[]:(body.op==='batch'?body.ops:[body]).map(o=>o.path);held.forEach(hold);
+    if(!grab){(body.op==='batch'?body.ops:[body]).forEach(optimistic);notify()}
     let r;
-    // 음식 가져가기는 시간 초과 때 그냥 다시 보내면 두 번 가져갈 수 있어서, 다시 보내지 않고 부른 쪽이 확인
+    // 예전 음식 가져가기(claim)는 다시 보내지 않음. pick은 같은 요청이 두 번 가도 한 번만 가져가서 다시 보내도 안전
     const tries=body.op==='claim'?1:3;
     for(let i=0;i<3;i++){
       try{r=await (await fetchT(API_URL,{method:'POST',body:JSON.stringify({...body,key})},20000)).json();if(r.ok||r.error!=='busy')break}
       catch(e){r={ok:false,error:e&&e.name==='AbortError'?'timeout':'network'};if(i+1>=tries)break}
       await sleep(600+i*800);
     }
-    if(r&&r.ok&&body.op==='claim'&&r.data)all[body.path]=r.data;
+    if(r&&r.ok&&grab&&r.data){all[body.path]=r.data;notify()}
     held.forEach(release);   // 저장이 끝남 (성공·실패 모두) — 이후 받기부터는 서버 내용을 그대로 씀
     if(!r||!r.ok){const err=new Error((r&&r.error)||'network');err.code=(r&&r.error)||'network';pull();throw err}
     // 저장 뒤 바로 다시 받지 않음 (요청 수 절반으로) — 다음 정기 확인 때 함께 받음
@@ -621,7 +626,9 @@ const Store=(()=>{
     async init({poll=3000,teacherKey=''}={}){pollMs=poll;key=teacherKey;if(LOCAL){all=lload();return}await pull();loop()},
     setKey(k){key=k},
     /* 학생: 서버가 이 학생(번호+이름) 기록만 보내 주도록. 바뀌면 처음부터 다시 받음 */
-    setMe(k,n){if(k===me&&n===nm)return;me=k||'';nm=n||'';ver=0},
+    setMe(k,n,p){if(p!==undefined)pp=p||'';if(k===me&&n===nm)return;me=k||'';nm=n||'';ver=0},
+    /* 확인 간격 바꾸기 (음식 고르는 동안만 자주) */
+    setPoll(ms){if(ms===pollMs)return;pollMs=ms;if(timer&&!LOCAL)loop()},
     /* 진행 중인 받기가 끝날 때까지 기다렸다가 새로 받기 */
     async refreshNow(){while(pulling)await sleep(80);await pull()},
     on(fn){listeners.add(fn);return()=>listeners.delete(fn)},
@@ -634,7 +641,9 @@ const Store=(()=>{
     update:(path,data)=>post({op:'update',path,data}),
     del:path=>post({op:'delete',path}),
     batch:ops=>post({op:'batch',ops}),
-    claim:(path,food,qty,entry)=>post({op:'claim',path,food,qty,entry})
+    claim:(path,food,qty,entry)=>post({op:'claim',path,food,qty,entry}),
+    /* 음식 가져가기 + 가져오면 내 기록(spath)도 sdata로 저장. 같은 cid로 다시 보내도 한 번만 가져감 */
+    pick:(path,food,qty,entry,spath,sdata)=>post({op:'pick',path,food,qty,entry,spath,sdata})
   };
 })();
 async function checkTeacherKey(k){
@@ -768,7 +777,7 @@ function confetti(){
 function burst(kind,text,sub){
   const b=document.createElement('div');b.className='burst '+kind;
   b.innerHTML=`<div class="star"><span>${text}${sub?`<small>${sub}</small>`:''}</span></div>`;
-  document.body.appendChild(b);return sleep(900).then(()=>b.remove());
+  document.body.appendChild(b);return sleep(700).then(()=>b.remove());
 }
 if('serviceWorker' in navigator&&location.protocol==='https:')window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 
